@@ -1,0 +1,159 @@
+{
+  "numbers": {
+    "zero": 0,
+    "oh": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "thirteen": 13,
+    "fourteen": 14,
+    "fifteen": 15
+  },
+  "perio_indicators": {
+    "bleeding": {
+      "aliases": ["bleed", "bop"],
+      "action": "keystroke",
+      "key": "b"
+    },
+    "suppuration": {
+      "aliases": ["pus"],
+      "action": "keystroke",
+      "key": "s"
+    },
+    "plaque": {
+      "aliases": [],
+      "action": "keystroke",
+      "key": "p"
+    },
+    "calculus": {
+      "aliases": ["tartar"],
+      "action": "keystroke",
+      "key": "c"
+    },
+    "furcation": {
+      "aliases": ["furca"],
+      "action": "multi_keystroke",
+      "key": "f",
+      "classes": {
+        "one": "1",
+        "two": "2",
+        "three": "3"
+      }
+    },
+    "mobility": {
+      "aliases": ["mobile"],
+      "action": "multi_keystroke",
+      "key": "m",
+      "classes": {
+        "one": "1",
+        "two": "2",
+        "three": "3"
+      }
+    },
+    "recession": {
+      "aliases": [],
+      "action": "keystroke",
+      "key": "r"
+    }
+  },
+  "navigation": {
+    "next": {
+      "aliases": ["next tooth"],
+      "action": "keystroke",
+      "key": "tab"
+    },
+    "previous": {
+      "aliases": ["back", "prev"],
+      "action": "keystroke",
+      "key": "shift+tab"
+    },
+    "skip": {
+      "aliases": ["missing"],
+      "action": "keystroke",
+      "key": "tab"
+    },
+    "upper_right": {
+      "aliases": ["quadrant one", "ur"],
+      "action": "jump_quadrant",
+      "quadrant": 1
+    },
+    "upper_left": {
+      "aliases": ["quadrant two", "ul"],
+      "action": "jump_quadrant",
+      "quadrant": 2
+    },
+    "lower_left": {
+      "aliases": ["quadrant three", "ll"],
+      "action": "jump_quadrant",
+      "quadrant": 3
+    },
+    "lower_right": {
+      "aliases": ["quadrant four", "lr"],
+      "action": "jump_quadrant",
+      "quadrant": 4
+    },
+    "facial": {
+      "aliases": ["buccal"],
+      "action": "switch_side",
+      "side": "facial"
+    },
+    "lingual": {
+      "aliases": ["palatal"],
+      "action": "switch_side",
+      "side": "lingual"
+    }
+  },
+  "actions": {
+    "enter": {
+      "aliases": ["okay", "ok"],
+      "action": "keystroke",
+      "key": "enter"
+    },
+    "cancel": {
+      "aliases": ["escape", "esc"],
+      "action": "keystroke",
+      "key": "escape"
+    },
+    "save": {
+      "aliases": [],
+      "action": "keystroke",
+      "key": "ctrl+s"
+    },
+    "undo": {
+      "aliases": [],
+      "action": "keystroke",
+      "key": "ctrl+z"
+    },
+    "correction": {
+      "aliases": ["scratch that", "scratch"],
+      "action": "keystroke",
+      "key": "ctrl+z"
+    }
+  },
+  "app_control": {
+    "wake": {
+      "aliases": ["voice perio wake", "start listening"],
+      "action": "app_control",
+      "command": "wake"
+    },
+    "sleep": {
+      "aliases": ["voice perio sleep", "pause", "voice perio pause"],
+      "action": "app_control",
+      "command": "sleep"
+    },
+    "stop": {
+      "aliases": ["voice perio stop", "exit"],
+      "action": "app_control",
+      "command": "stop"
+    }
+  }
+}
