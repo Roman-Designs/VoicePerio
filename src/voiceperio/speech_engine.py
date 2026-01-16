@@ -96,7 +96,7 @@ class SpeechEngine:
                 # Complete result
                 if 'result' in result_dict:
                     # Multiple words recognized
-                    text = ' '.join([w['conf'] for w in result_dict['result']])
+                    text = ' '.join([w['result'] for w in result_dict['result']])
                     self.partial_result = text
                     logger.debug(f"Complete result: {text}")
                 else:

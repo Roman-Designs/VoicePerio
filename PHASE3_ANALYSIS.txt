@@ -1,0 +1,268 @@
+PHASE 3 (COMMAND PROCESSING) - COMPREHENSIVE ANALYSIS
+=====================================================
+Date: January 16, 2026
+Status: Ready for Implementation
+
+=== EXECUTIVE SUMMARY ===
+
+Phase 3 is the critical command processing layer that converts Vosk speech 
+recognition output into executable commands. This phase bridges Phase 2 
+(speech input) and Phase 4 (keystroke output).
+
+Current State:
+- commandparser.py: Skeleton with fuzzy matching, parsing logic TODO
+- number_sequencer.py: COMPLETE implementation
+- default_commands.json: COMPLETE with 39 commands
+- Phase 2 modules: COMPLETE (audio + speech recognition)
+
+What's Missing:
+- CommandParser.parse() implementation
+- Number sequence detection
+- Number extraction logic
+- Command matching with fuzzy fallback
+- Multi-keyword command handling
+
+=== 1. COMMANDPARSER STUB ANALYSIS ===
+
+File: src/voiceperio/command_parser.py (132 lines)
+
+IMPLEMENTED:
+✓ load_commands() - Reads JSON and populates commands_db
+✓ Command class - Simple container with action + params
+✓ fuzzy_match() - Using rapidfuzz with 80/100 threshold
+✓ Logging infrastructure
+
+NOT IMPLEMENTED (TODOs):
+✗ parse() method - Main routing logic (line 81-82: pass)
+✗ is_number_sequence() - Detect sequences like "three two three"
+✗ extract_numbers() - Convert "three" → 3, "fifteen" → 15
+
+Expected Behavior:
+"three two three"  → Command(action="number_sequence", numbers=[3, 2, 3])
+"four"             → Command(action="number_sequence", numbers=[4])
+"bleeding"         → Command(action="keystroke", key="b")
+"next"             → Command(action="keystroke", key="tab")
+"quadrant one"     → Command(action="jump_quadrant", quadrant=1)
+
+=== 2. COMMAND DEFINITION STRUCTURE ===
+
+File: src/voiceperio/commands/default_commands.json (160 lines)
+
+Structure: 5 categories with 39 total commands
+
+2.1 NUMBERS (16 entries)
+- zero/oh → 0
+- one → 1
+- ... 
+- fifteen → 15
+Usage: Both single numbers and sequences (e.g., "three two three")
+
+2.2 PERIO INDICATORS (7 commands)
+
+Simple Keystroke (1 key press):
+- bleeding (aliases: bleed, bop) → "b"
+- suppuration (aliases: pus) → "s"
+- plaque → "p"
+- calculus (aliases: tartar) → "c"
+- recession → "r"
+
+Multi-Keystroke (2 key presses with class):
+- furcation (aliases: furca) → "f" + class (1/2/3)
+- mobility (aliases: mobile) → "m" + class (1/2/3)
+
+Example: "furcation one" → Press 'f' then '1'
+
+2.3 NAVIGATION (8 commands)
+- next (alias: next tooth) → Tab
+- previous (aliases: back, prev) → Shift+Tab
+- skip (aliases: missing) → Tab
+- upper_right (aliases: quadrant one, ur) → jump to quadrant 1
+- upper_left (aliases: quadrant two, ul) → jump to quadrant 2
+- lower_left (aliases: quadrant three, ll) → jump to quadrant 3
+- lower_right (aliases: quadrant four, lr) → jump to quadrant 4
+- facial (aliases: buccal) → switch to facial side
+- lingual (aliases: palatal) → switch to lingual side
+
+2.4 ACTIONS (5 commands)
+- enter (aliases: okay, ok) → Enter key
+- cancel (aliases: escape, esc) → Escape key
+- save → Ctrl+S
+- undo → Ctrl+Z
+- correction (aliases: scratch that, scratch) → Ctrl+Z
+
+2.5 APP CONTROL (3 commands)
+- wake (aliases: voice perio wake, start listening) → pause listening
+- sleep (aliases: voice perio sleep, pause) → resume listening
+- stop (aliases: voice perio stop, exit) → exit app
+
+JSON Summary:
+- Numbers: 16 (simple values)
+- Indicators: 7 (keystroke, multi_keystroke)
+- Navigation: 8 (keystroke, jump_quadrant, switch_side)
+- Actions: 5 (keystroke with key combos)
+- App Control: 3 (special handling)
+TOTAL: 39 commands, 20+ aliases
+
+=== 3. NUMBERSEQUENCER IMPLEMENTATION ===
+
+File: src/voiceperio/number_sequencer.py (89 lines)
+
+STATUS: ✓ COMPLETE AND READY
+
+Constructor Parameters:
+- inter_number_delay_ms: 50 (delay between entries)
+- tab_after_sequence: True (press Tab after last number)
+- advance_key: "tab" (key between numbers)
+
+Core Method: sequence_numbers(numbers: List[int]) -> bool
+
+Workflow for [3, 2, 3]:
+1. Type "3"
+2. Wait 50ms
+3. Press Tab
+4. Type "2"
+5. Wait 50ms
+6. Press Tab
+7. Type "3"
+8. Wait 50ms
+9. Press Tab (final)
+
+Integration with Phase 4:
+- Requires ActionExecutor to be injected via set_action_executor()
+- Phase 3 extracts numbers, creates Command
+- Phase 4 calls sequencer.sequence_numbers(numbers)
+
+What NumberSequencer Provides to Phase 3:
+- A complete, tested execution endpoint
+- Phase 3 just needs to extract numbers from text
+- Phase 3 creates Command(action="number_sequence", numbers=[...])
+
+=== 4. PHASE 2 OUTPUT: WHAT GETS PASSED TO PHASE 3 ===
+
+Phase 2 Modules (COMPLETE):
+
+AudioCapture.get_audio_chunk() → bytes
+- Returns audio as bytes (16000 Hz, mono, int16)
+
+SpeechEngine.process_audio(chunk: bytes) → Optional[str]
+- Returns recognized text like "three two three"
+- Returns None if recognition incomplete
+
+Data Flow:
+┌─────────────────────────────────────┐
+│ PHASE 2: Microphone → Speech Text   │
+├─────────────────────────────────────┤
+│ Result: "three two three"           │
+│ (lowercase, trimmed, ASCII)         │
+└─────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────┐
+│ PHASE 3: Parse Text → Command       │
+├─────────────────────────────────────┤
+│ parse("three two three")            │
+│ ↓                                   │
+│ Command(                            │
+│   action="number_sequence",         │
+│   numbers=[3, 2, 3]                 │
+│ )                                   │
+└─────────────────────────────────────┘
+
+What Phase 2 Guarantees:
+- Text is lowercased
+- Text is trimmed
+- Text is ASCII
+- Recognition is continuous
+- Grammar support available
+
+CRITICAL BUG IN PHASE 2:
+speech_engine.py line 99:
+  WRONG: text = ' '.join([w['conf'] for w in result_dict['result']])
+  RIGHT: text = ' '.join([w['conf'] for w in result_dict['result']])
+  
+w['conf'] is confidence score (float), not the word!
+Should be w['conf'] - but check Vosk docs for correct field name.
+
+Impact: CommandParser will receive gibberish instead of recognized words.
+Fix Priority: CRITICAL before Phase 3 testing
+
+=== 5. MISSING IMPLEMENTATION DETAILS ===
+
+Method 1: is_number_sequence(text: str) -> bool
+
+Purpose: Detect if text is a number sequence
+
+Examples:
+"three" → True (single number, still a sequence)
+"four" → True
+"three two three" → True
+"bleeding" → False
+"next" → False
+
+Logic:
+1. Split text by spaces
+2. Check if ALL words are in commands_db["numbers"]
+3. Return True/False
+
+Edge case: Single numbers like "three" - per README spec,
+these also go through sequence_numbers(), so return True.
+
+Method 2: extract_numbers(text: str) -> List[int]
+
+Purpose: Convert number words to integers
+
+Examples:
+"three two three" → [3, 2, 3]
+"four" → [4]
+"zero" → [0]
+"oh" → [0]
+
+Logic:
+1. Split text by spaces
+2. For each word, look up in commands_db["numbers"]
+3. Collect integers and return
+
+Validation:
+- Only 0-15 are valid pocket depths
+- Sequences over 6 numbers are unlikely
+- Log warnings for invalid numbers
+
+Method 3: parse(text: str) -> Optional[Command]
+
+Purpose: Main parsing logic - route to correct handler
+
+Algorithm:
+1. Normalize: text.strip().lower()
+
+2. Check if number sequence:
+   if is_number_sequence(text):
+       numbers = extract_numbers(text)
+       return Command(action="number_sequence", numbers=numbers)
+
+3. Try to match against commands database:
+   For each category (indicators, navigation, actions, app_control):
+       For each command in category:
+           - Check if text == command name
+           - Check if text == any alias (fuzzy if enabled)
+           - If match found: return Command with command definition
+
+4. Handle multi-keyword commands:
+   "furcation one" → separate into ["furcation", "one"]
+   Extract class from number mapping
+   Create Command with key + class
+
+5. Return None if no match found
+
+Special Multi-Keyword Commands:
+- "furcation one/two/three" → f + class number
+- "mobility one/two/three" → m + class number
+- "quadrant one/two/three/four" → jump to quadrant
+- Any multi-word alias like "next tooth", "quadrant one"
+
+=== 6. INTEGRATION POINTS ===
+
+Phase 4 (ActionExecutor) expects Command objects:
+
+if command.action == "number_sequence":
+    sequencer.sequence_numbers(command.numbers)
+
+elif command.ac

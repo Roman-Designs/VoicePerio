@@ -1,0 +1,222 @@
+================================================================================
+PHASE 3 ANALYSIS SUMMARY: COMMAND PROCESSING IMPLEMENTATION
+================================================================================
+
+Date: January 16, 2026
+Project: VoicePerio - Voice-Controlled Periodontal Charting Assistant
+Current Phase: 3 (Command Processing) - Ready for Implementation
+
+================================================================================
+ANALYSIS OVERVIEW
+================================================================================
+
+This analysis examines the Phase 3 command processing layer that converts
+speech recognition output ("three two three", "bleeding", "next") into
+executable commands that will be processed by Phase 4 (keystroke injection).
+
+Key Question: What does Phase 3 need to implement?
+Answer: Parse recognized speech text into Command objects for Phase 4 execution
+
+================================================================================
+1. COMMANDPARSER.PY - CURRENT STATE
+================================================================================
+
+File: src/voiceperio/command_parser.py (132 lines)
+
+Status: 60% Complete (Skeleton with Stubs)
+
+WHAT'S WORKING:
+✓ load_commands() - Reads default_commands.json (160 lines)
+✓ Command class - Simple container with action + params
+✓ fuzzy_match() - Using rapidfuzz library (threshold 80/100)
+✓ Logging infrastructure - All methods log errors
+
+WHAT'S NOT WORKING:
+✗ parse() method - Line 81-82: just "pass" (returns None always)
+✗ is_number_sequence() - Line 94-95: stub
+✗ extract_numbers() - Line 107-108: stub
+
+Impact: Parser cannot parse ANY commands currently
+
+Expected Behavior Examples:
+  Input: "three two three"  → Command(action="number_sequence", numbers=[3,2,3])
+  Input: "bleeding"         → Command(action="keystroke", key="b")
+  Input: "next"             → Command(action="keystroke", key="tab")
+  Input: "furcation one"    → Command(action="multi_keystroke", key="f", num="1")
+  Input: "quadrant two"     → Command(action="jump_quadrant", quadrant=2)
+
+================================================================================
+2. COMMAND DEFINITIONS - JSON STRUCTURE
+================================================================================
+
+File: src/voiceperio/commands/default_commands.json (160 lines)
+
+5 Categories, 39 Commands, 20+ Aliases
+
+NUMBERS (16 entries)
+  zero, oh → 0
+  one → 1
+  ...
+  fifteen → 15
+  Usage: Pocket depth measurements (0-15mm range)
+
+PERIO_INDICATORS (7 commands)
+  Simple: bleeding(b), suppuration(s), plaque(p), calculus(c), recession(r)
+  With Classes: furcation(f + class 1-3), mobility(m + class 1-3)
+  Aliases: "bleed" for "bleeding", "pus" for "suppuration", etc.
+
+NAVIGATION (8 commands)
+  Movement: next(tab), previous(shift+tab), skip(tab)
+  Quadrants: upper_right(1), upper_left(2), lower_left(3), lower_right(4)
+  Sides: facial(facial), lingual(lingual)
+  Aliases: "back" for "previous", "ur" for "upper_right", etc.
+
+ACTIONS (5 commands)
+  enter(enter), cancel(escape), save(ctrl+s), undo(ctrl+z), 
+  correction(ctrl+z)
+  Aliases: "okay"→enter, "esc"→escape, etc.
+
+APP_CONTROL (3 commands)
+  wake(special), sleep(special), stop(special)
+  These don't generate keystrokes - handled by app logic
+
+Structure Pattern:
+{
+  "command_name": {
+    "aliases": ["alias1", "alias2"],
+    "action": "keystroke|multi_keystroke|jump_quadrant|switch_side|app_control",
+    "key": "b",           // For keystroke actions
+    "classes": {...},     // For multi_keystroke (optional)
+    "quadrant": 1,        // For jump_quadrant (optional)
+    "side": "facial"      // For switch_side (optional)
+  }
+}
+
+================================================================================
+3. NUMBERSEQUENCER.PY - COMPLETE & READY
+================================================================================
+
+File: src/voiceperio/number_sequencer.py (89 lines)
+
+Status: ✓ COMPLETE - No changes needed
+
+What It Does:
+- Takes list of numbers [3, 2, 3]
+- Types each number with proper delays
+- Presses Tab between numbers
+- Optionally presses Tab after sequence
+
+Workflow for [3, 2, 3]:
+  1. Type "3"
+  2. Wait 50ms
+  3. Press Tab
+  4. Type "2"
+  5. Wait 50ms
+  6. Press Tab
+  7. Type "3"
+  8. Wait 50ms
+  9. Press Tab (final)
+
+Result in Dentrix: Numbers 3, 2, 3 appear in three consecutive fields
+
+Integration with Phase 3:
+  Phase 3 parses: "three two three" → extracts [3, 2, 3]
+  Phase 3 creates: Command(action="number_sequence", numbers=[3, 2, 3])
+  Phase 4 calls: sequencer.sequence_numbers([3, 2, 3])
+
+================================================================================
+4. PHASE 2 OUTPUT - WHAT PHASE 3 RECEIVES
+================================================================================
+
+Phase 2 (Audio & Speech Recognition) - COMPLETE
+
+AudioCapture.get_audio_chunk() → bytes (16kHz, mono, int16)
+
+SpeechEngine.process_audio(chunk) → Optional[str]
+
+Examples of Phase 3 Input:
+  "three two three"
+  "bleeding"
+  "bleed"                  (alias)
+  "next tooth"             (multi-word)
+  "furcation one"          (multi-word with class)
+  "quadrant two"           (multi-word with parameter)
+  "voice perio sleep"      (multi-word app control)
+
+Properties:
+  - Lowercase
+  - Trimmed
+  - ASCII only
+  - Complete phrases
+  - Real-time partial results available
+
+CRITICAL BUG IN PHASE 2:
+  Location: speech_engine.py line 99
+  Problem: w['conf'] is confidence score (float), not the word!
+  Impact: Parser receives gibberish like "0.95 0.87 0.91"
+  Status: MUST FIX before Phase 3 testing
+  Fix: Change w['conf'] to w['result'] (or correct Vosk field name)
+
+================================================================================
+5. WHAT'S MISSING - IMPLEMENTATION REQUIRED
+================================================================================
+
+METHOD 1: extract_numbers(text: str) -> List[int]
+  Purpose: Convert number words to integers
+  Example: "three two three" → [3, 2, 3]
+  Algorithm:
+    1. Split text by spaces
+    2. Look up each word in commands_db["numbers"]
+    3. Collect integers
+    4. Return list
+
+METHOD 2: is_number_sequence(text: str) -> bool
+  Purpose: Detect if text is number words (vs commands like "bleeding")
+  Example: "three two three" → True, "bleeding" → False
+  Note: Even single numbers return True
+  Algorithm:
+    1. Split by spaces
+    2. Check if ALL words are in commands_db["numbers"]
+    3. Return True if all are numbers, False otherwise
+
+METHOD 3: parse(text: str) -> Optional[Command]
+  Purpose: Main routing - convert text to Command object
+  Algorithm:
+    1. Normalize text: strip, lowercase
+    2. Check if number sequence → extract and return number command
+    3. Try to match against command database (exact + fuzzy)
+    4. Handle multi-keyword commands (e.g., "furcation one")
+    5. Return None if no match
+  
+  Workflow:
+    - "three two three" → is_number_sequence → extract_numbers → Command
+    - "bleeding" → lookup in indicators → build command → Command
+    - "bleed" → lookup aliases → build command → Command
+    - "quadrant one" → multi-keyword parsing → Command
+    - "invalid" → return None
+
+SPECIAL CASE: Multi-Keyword Commands
+  These need 2+ words to process:
+    "furcation one"    → "f" + "1"
+    "mobility two"     → "m" + "2"
+    "quadrant three"   → jump to quadrant 3
+    "next tooth"       → Tab (alias handling)
+    "voice perio wake" → app control (alias handling)
+
+================================================================================
+6. CRITICAL ISSUES & GAPS
+================================================================================
+
+ISSUE #1: SPEECH ENGINE BUG (CRITICAL - BLOCKS PHASE 3)
+  Severity: CRITICAL
+  File: src/voiceperio/speech_engine.py
+  Line: 99
+  Problem: w['conf'] gets confidence score (0.95) not word ("three")
+  Impact: Phase 3 receives nonsense input, cannot parse anything
+  Fix: Change to correct field (verify Vosk docs)
+  Timeline: Must fix BEFORE Phase 3 testing
+  Status: Blocks all Phase 3 testing
+
+ISSUE #2: Fuzzy Matching Strategy
+  Current: fuzzy_match() method exists but not used
+  Question: When to use fuzzy
