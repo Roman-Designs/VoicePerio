@@ -1,0 +1,61 @@
+# ChartAssist - Development Dependencies
+# Install with: pip install -r requirements-dev.txt
+
+# Include base requirements
+-r requirements.txt
+
+# =============================================================================
+# TESTING
+# =============================================================================
+
+pytest>=7.4.0
+pytest-qt>=4.2.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+pytest-asyncio>=0.21.1
+
+# =============================================================================
+# CODE QUALITY
+# =============================================================================
+
+# Formatting
+black>=23.0.0
+isort>=5.12.0
+
+# Linting
+flake8>=6.0.0
+flake8-docstrings>=1.7.0
+pylint>=2.17.0
+
+# Type Checking
+mypy>=1.5.0
+types-pywin32>=306.0.0
+
+# =============================================================================
+# BUILD & DISTRIBUTION
+# =============================================================================
+
+# Create standalone executable
+pyinstaller>=5.13.0
+
+# Alternative: Nuitka compiler (faster executables)
+# nuitka>=1.8.0
+
+# Create Windows installer
+# pynsist>=2.8  # NSIS-based installer creator
+
+# =============================================================================
+# DOCUMENTATION
+# =============================================================================
+
+mkdocs>=1.5.0
+mkdocs-material>=9.2.0
+mkdocstrings>=0.23.0
+
+# =============================================================================
+# DEBUGGING & PROFILING
+# =============================================================================
+
+ipython>=8.14.0
+memory-profiler>=0.61.0
+line-profiler>=4.1.0

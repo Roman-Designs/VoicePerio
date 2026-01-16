@@ -1,0 +1,356 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "description": "Voice commands for VoicePerio - Periodontal Charting Assistant",
+    "target_software": "Dentrix (or any perio charting software)",
+    "last_updated": "2025-01-15"
+  },
+
+  "settings": {
+    "fuzzy_match_threshold": 0.85,
+    "case_sensitive": false,
+    "number_entry_mode": "sequential"
+  },
+
+  "commands": {
+
+    "pocket_depths": {
+      "description": "Pocket depth measurements (0-15mm typical range)",
+      "entries": {
+        "0": { "patterns": ["zero", "oh", "0"], "output": "0" },
+        "1": { "patterns": ["one", "1"], "output": "1" },
+        "2": { "patterns": ["two", "2", "to", "too"], "output": "2" },
+        "3": { "patterns": ["three", "3"], "output": "3" },
+        "4": { "patterns": ["four", "4", "for"], "output": "4" },
+        "5": { "patterns": ["five", "5"], "output": "5" },
+        "6": { "patterns": ["six", "6"], "output": "6" },
+        "7": { "patterns": ["seven", "7"], "output": "7" },
+        "8": { "patterns": ["eight", "8"], "output": "8" },
+        "9": { "patterns": ["nine", "9"], "output": "9" },
+        "10": { "patterns": ["ten", "10"], "output": "10" },
+        "11": { "patterns": ["eleven", "11"], "output": "11" },
+        "12": { "patterns": ["twelve", "12"], "output": "12" },
+        "13": { "patterns": ["thirteen", "13"], "output": "13" },
+        "14": { "patterns": ["fourteen", "14"], "output": "14" },
+        "15": { "patterns": ["fifteen", "15"], "output": "15" }
+      }
+    },
+
+    "number_sequences": {
+      "description": "Common 3-number sequences for faster entry (DB, B, MB or DL, L, ML)",
+      "entries": {
+        "3_2_3": { "patterns": ["three two three", "3 2 3"], "output": ["3", "2", "3"] },
+        "3_3_3": { "patterns": ["three three three", "3 3 3"], "output": ["3", "3", "3"] },
+        "2_2_2": { "patterns": ["two two two", "2 2 2"], "output": ["2", "2", "2"] },
+        "3_2_2": { "patterns": ["three two two", "3 2 2"], "output": ["3", "2", "2"] },
+        "2_2_3": { "patterns": ["two two three", "2 2 3"], "output": ["2", "2", "3"] },
+        "4_3_3": { "patterns": ["four three three", "4 3 3"], "output": ["4", "3", "3"] },
+        "3_3_4": { "patterns": ["three three four", "3 3 4"], "output": ["3", "3", "4"] },
+        "4_4_4": { "patterns": ["four four four", "4 4 4"], "output": ["4", "4", "4"] },
+        "5_4_4": { "patterns": ["five four four", "5 4 4"], "output": ["5", "4", "4"] },
+        "4_4_5": { "patterns": ["four four five", "4 4 5"], "output": ["4", "4", "5"] },
+        "5_5_5": { "patterns": ["five five five", "5 5 5"], "output": ["5", "5", "5"] },
+        "6_5_5": { "patterns": ["six five five", "6 5 5"], "output": ["6", "5", "5"] },
+        "5_5_6": { "patterns": ["five five six", "5 5 6"], "output": ["5", "5", "6"] }
+      }
+    },
+
+    "perio_indicators": {
+      "description": "Periodontal condition markers",
+      "entries": {
+        "bleeding": {
+          "patterns": ["bleeding", "bleed", "blood", "bop", "bleeds"],
+          "action": "keystroke",
+          "keys": ["b"],
+          "description": "Mark bleeding on probing"
+        },
+        "suppuration": {
+          "patterns": ["suppuration", "pus", "purulence", "sup"],
+          "action": "keystroke",
+          "keys": ["s"],
+          "description": "Mark suppuration/pus"
+        },
+        "plaque": {
+          "patterns": ["plaque", "plak"],
+          "action": "keystroke",
+          "keys": ["p"],
+          "description": "Mark plaque present"
+        },
+        "calculus": {
+          "patterns": ["calculus", "tartar", "calc"],
+          "action": "keystroke",
+          "keys": ["c"],
+          "description": "Mark calculus present"
+        },
+        "furcation": {
+          "patterns": ["furcation", "furca", "furc"],
+          "action": "keystroke",
+          "keys": ["f"],
+          "description": "Mark furcation involvement"
+        },
+        "furcation_1": {
+          "patterns": ["furcation one", "furcation 1", "furca one", "class one furcation"],
+          "action": "type_text",
+          "output": "F1",
+          "description": "Class I furcation"
+        },
+        "furcation_2": {
+          "patterns": ["furcation two", "furcation 2", "furca two", "class two furcation"],
+          "action": "type_text",
+          "output": "F2",
+          "description": "Class II furcation"
+        },
+        "furcation_3": {
+          "patterns": ["furcation three", "furcation 3", "furca three", "class three furcation"],
+          "action": "type_text",
+          "output": "F3",
+          "description": "Class III furcation"
+        },
+        "mobility": {
+          "patterns": ["mobility", "mobile", "loose"],
+          "action": "keystroke",
+          "keys": ["m"],
+          "description": "Mark tooth mobility"
+        },
+        "mobility_1": {
+          "patterns": ["mobility one", "mobility 1", "class one mobility"],
+          "action": "type_text",
+          "output": "M1",
+          "description": "Class I mobility"
+        },
+        "mobility_2": {
+          "patterns": ["mobility two", "mobility 2", "class two mobility"],
+          "action": "type_text",
+          "output": "M2",
+          "description": "Class II mobility"
+        },
+        "mobility_3": {
+          "patterns": ["mobility three", "mobility 3", "class three mobility"],
+          "action": "type_text",
+          "output": "M3",
+          "description": "Class III mobility"
+        },
+        "recession": {
+          "patterns": ["recession", "receding", "gum recession"],
+          "action": "keystroke",
+          "keys": ["r"],
+          "description": "Mark gingival recession"
+        }
+      }
+    },
+
+    "tooth_navigation": {
+      "description": "Navigate between teeth during charting",
+      "entries": {
+        "tooth": {
+          "patterns": ["tooth", "number", "go to tooth", "go to"],
+          "action": "tooth_prefix",
+          "description": "Prefix for tooth number (e.g., 'tooth 14')"
+        },
+        "next_tooth": {
+          "patterns": ["next", "next tooth", "forward"],
+          "action": "keystroke",
+          "keys": ["tab"],
+          "description": "Move to next tooth"
+        },
+        "previous_tooth": {
+          "patterns": ["previous", "back", "go back", "last"],
+          "action": "keystroke",
+          "keys": ["shift+tab"],
+          "description": "Move to previous tooth"
+        },
+        "upper_right": {
+          "patterns": ["upper right", "ur", "quadrant one", "quadrant 1"],
+          "action": "navigation",
+          "quadrant": 1,
+          "description": "Jump to upper right quadrant"
+        },
+        "upper_left": {
+          "patterns": ["upper left", "ul", "quadrant two", "quadrant 2"],
+          "action": "navigation",
+          "quadrant": 2,
+          "description": "Jump to upper left quadrant"
+        },
+        "lower_left": {
+          "patterns": ["lower left", "ll", "quadrant three", "quadrant 3"],
+          "action": "navigation",
+          "quadrant": 3,
+          "description": "Jump to lower left quadrant"
+        },
+        "lower_right": {
+          "patterns": ["lower right", "lr", "quadrant four", "quadrant 4"],
+          "action": "navigation",
+          "quadrant": 4,
+          "description": "Jump to lower right quadrant"
+        }
+      }
+    },
+
+    "charting_sides": {
+      "description": "Switch between facial/buccal and lingual/palatal sides",
+      "entries": {
+        "facial": {
+          "patterns": ["facial", "buccal", "outside", "cheek side"],
+          "action": "side_switch",
+          "side": "facial",
+          "description": "Switch to facial/buccal measurements"
+        },
+        "lingual": {
+          "patterns": ["lingual", "palatal", "inside", "tongue side"],
+          "action": "side_switch",
+          "side": "lingual",
+          "description": "Switch to lingual/palatal measurements"
+        }
+      }
+    },
+
+    "navigation": {
+      "description": "General navigation within the charting interface",
+      "entries": {
+        "next": {
+          "patterns": ["next", "next field", "tab", "move on"],
+          "action": "keystroke",
+          "keys": ["tab"],
+          "description": "Move to next field"
+        },
+        "previous": {
+          "patterns": ["previous", "back", "previous field"],
+          "action": "keystroke",
+          "keys": ["shift+tab"],
+          "description": "Move to previous field"
+        },
+        "up": {
+          "patterns": ["up", "move up"],
+          "action": "keystroke",
+          "keys": ["up"],
+          "description": "Move up"
+        },
+        "down": {
+          "patterns": ["down", "move down"],
+          "action": "keystroke",
+          "keys": ["down"],
+          "description": "Move down"
+        },
+        "skip": {
+          "patterns": ["skip", "skip tooth", "missing"],
+          "action": "keystroke",
+          "keys": ["tab"],
+          "description": "Skip current tooth (missing)"
+        }
+      }
+    },
+
+    "actions": {
+      "description": "General action commands",
+      "entries": {
+        "enter": {
+          "patterns": ["enter", "confirm", "okay", "ok"],
+          "action": "keystroke",
+          "keys": ["enter"],
+          "description": "Confirm entry"
+        },
+        "cancel": {
+          "patterns": ["cancel", "escape", "close"],
+          "action": "keystroke",
+          "keys": ["escape"],
+          "description": "Cancel"
+        },
+        "save": {
+          "patterns": ["save", "save chart"],
+          "action": "keystroke",
+          "keys": ["ctrl+s"],
+          "description": "Save perio chart"
+        },
+        "undo": {
+          "patterns": ["undo", "undo that"],
+          "action": "keystroke",
+          "keys": ["ctrl+z"],
+          "description": "Undo last entry"
+        },
+        "clear": {
+          "patterns": ["clear", "clear field"],
+          "action": "keystroke_sequence",
+          "keys": [["ctrl+a"], ["delete"]],
+          "description": "Clear current field"
+        }
+      }
+    },
+
+    "system_commands": {
+      "description": "VoicePerio application control",
+      "entries": {
+        "wake": {
+          "patterns": ["voice perio wake", "wake up", "start listening", "listening on"],
+          "action": "app_control",
+          "command": "wake",
+          "description": "Activate voice recognition"
+        },
+        "sleep": {
+          "patterns": ["voice perio sleep", "go to sleep", "stop listening", "listening off", "pause"],
+          "action": "app_control",
+          "command": "sleep",
+          "description": "Pause voice recognition"
+        },
+        "stop": {
+          "patterns": ["voice perio stop", "voice perio quit", "exit"],
+          "action": "app_control",
+          "command": "stop",
+          "requires_confirmation": true,
+          "description": "Exit VoicePerio"
+        },
+        "correction": {
+          "patterns": ["correction", "scratch that", "wrong", "mistake", "oops"],
+          "action": "app_control",
+          "command": "undo_last",
+          "description": "Undo last voice entry"
+        },
+        "repeat": {
+          "patterns": ["repeat", "again", "repeat that"],
+          "action": "app_control",
+          "command": "repeat_last",
+          "description": "Repeat last command"
+        }
+      }
+    }
+  },
+
+  "grammars": {
+    "description": "Vosk grammar for improved recognition of perio-specific terms",
+    "perio_vocabulary": [
+      "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+      "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+      "bleeding", "bleed", "blood", "bop",
+      "suppuration", "pus", "sup",
+      "plaque", "calculus", "tartar",
+      "furcation", "furca", "mobility", "mobile", "recession",
+      "class", "one", "two", "three",
+      "tooth", "next", "previous", "back", "skip",
+      "facial", "buccal", "lingual", "palatal",
+      "upper", "lower", "right", "left", "quadrant",
+      "enter", "cancel", "save", "undo", "clear",
+      "voice", "perio", "wake", "sleep", "stop", "correction", "repeat",
+      "okay", "ok"
+    ]
+  },
+
+  "workflow": {
+    "description": "Expected perio charting workflow",
+    "typical_sequence": [
+      "1. Start at tooth 1 (or specified starting tooth)",
+      "2. Call out 3 facial/buccal measurements: DB, B, MB (distal-buccal, buccal, mesial-buccal)",
+      "3. Call out 3 lingual/palatal measurements: DL, L, ML",
+      "4. Mark any indicators: bleeding, suppuration, furcation, mobility",
+      "5. Move to next tooth automatically or say 'next'",
+      "6. Repeat for all teeth",
+      "7. Say 'save' when complete"
+    ],
+    "example_dictation": [
+      "'three two three' → enters 3, 2, 3 in facial fields",
+      "'bleeding' → marks BOP",
+      "'next' → moves to next tooth",
+      "'four three three' → enters 4, 3, 3",
+      "'lingual' → switches to lingual side",
+      "'three two two' → enters 3, 2, 2 in lingual fields"
+    ]
+  }
+}
