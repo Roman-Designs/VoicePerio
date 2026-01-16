@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 import logging
+import copy
 
 
 logger = logging.getLogger(__name__)
@@ -60,11 +61,11 @@ class ConfigManager:
         if config_path:
             self.config_path = Path(config_path)
         else:
-            # Default to %APPDATA%/VoicePerio/config.json
             appdata = os.getenv('APPDATA')
-            self.config_path = Path(appdata) / 'VoicePerio' / 'config.json'
+            config_file = 'config.json'
+            self.config_path = Path(appdata) / 'VoicePerio' / config_file if appdata else Path(config_file)
         
-        self.config = self.DEFAULT_CONFIG.copy()
+        self.config = copy.deepcopy(self.DEFAULT_CONFIG)
         self.load()
     
     def load(self) -> bool:
@@ -169,7 +170,7 @@ class ConfigManager:
         Returns:
             Merged configuration
         """
-        result = base.copy()
+        result = copy.deepcopy(base)
         
         for key, value in override.items():
             if key in result and isinstance(result[key], dict) and isinstance(value, dict):

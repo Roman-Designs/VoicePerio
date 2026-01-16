@@ -1,90 +1,47 @@
-# VoicePerio - Voice-Controlled Dental Charting Assistant
-# Requirements file for pip installation
+# VoicePerio - Requirements File
+# Voice-Controlled Periodontal Charting Assistant
 # Python 3.10+ required
-
-# =============================================================================
-# CORE DEPENDENCIES
 # =============================================================================
 
-# Speech Recognition - Offline voice-to-text engine
-# Vosk provides accurate offline speech recognition with custom grammar support
+# =============================================================================
+# RUNTIME DEPENDENCIES
+# =============================================================================
+
 vosk>=0.3.45
-
-# Audio Capture - Microphone input handling
-# sounddevice provides cross-platform audio I/O with NumPy integration
 sounddevice>=0.4.6
-
-# Keystroke Injection - Cross-platform automation
-# pyautogui handles mouse/keyboard automation for injecting keystrokes
 pyautogui>=0.9.54
-
-# Keyboard/Mouse Control - Low-level input control and monitoring
-# pynput provides keyboard listener for global hotkeys
 pynput>=1.7.6
-
-# GUI Framework - Modern Qt-based interface
-# PyQt6 for system tray, floating indicator, and settings panel
 PyQt6>=6.5.0
-
-# =============================================================================
-# SUPPORTING LIBRARIES
-# =============================================================================
-
-# Numerical Processing - Required by sounddevice for audio buffers
 numpy>=1.24.0
-
-# Global Hotkeys (Windows) - System-wide keyboard shortcuts
-# keyboard provides easy global hotkey registration on Windows
 keyboard>=0.13.5
-
-# Windows API Access - Window management and process control
-# pywin32 for finding/focusing Dentrix window
 pywin32>=306
-
-# =============================================================================
-# CONFIGURATION & UTILITIES
-# =============================================================================
-
-# JSON Schema Validation - Validate configuration files
-jsonschema>=4.19.0
-
-# Fuzzy String Matching - For voice command matching with variations
 rapidfuzz>=3.2.0
-
-# Logging Enhancement - Better log formatting and rotation
+jsonschema>=4.19.0
 colorlog>=6.7.0
 
 # =============================================================================
-# DEVELOPMENT DEPENDENCIES (uncomment for development)
+# BUILD DEPENDENCIES
 # =============================================================================
 
-# Testing Framework
-# pytest>=7.4.0
-# pytest-qt>=4.2.0
-# pytest-cov>=4.1.0
-
-# Code Quality
-# black>=23.0.0
-# flake8>=6.0.0
-# isort>=5.12.0
-# mypy>=1.5.0
-
-# Build & Distribution
-# pyinstaller>=5.13.0
-# nuitka>=1.8.0  # Alternative compiler for better performance
+pyinstaller>=5.13.0
 
 # =============================================================================
 # OPTIONAL ENHANCEMENTS (uncomment if needed)
 # =============================================================================
 
-# Alternative Speech Recognition - Higher accuracy but heavier
-# openai-whisper>=20230918  # Requires more RAM/CPU
-
-# Text-to-Speech Feedback - Audio confirmation of commands
+# openai-whisper>=20230918
 # pyttsx3>=2.90
-
-# System Notifications - Enhanced notification support
 # plyer>=2.1.0
 
-# Audio Feedback - Play confirmation sounds
-# pygame>=2.5.0
+# =============================================================================
+# DEVELOPMENT DEPENDENCIES (uncomment for development)
+# =============================================================================
+
+# pytest>=7.4.0
+# pytest-qt>=4.2.0
+# pytest-cov>=4.1.0
+# black>=23.0.0
+# flake8>=6.0.0
+# isort>=5.12.0
+# mypy>=1.5.0
+# nuitka>=1.8.0

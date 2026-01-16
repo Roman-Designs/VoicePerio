@@ -1,3 +1,15 @@
+⚠️ **IMPORTANT FOR AGENTS: READ AGENTS.md FIRST**
+
+Before starting ANY work on this project, you MUST read **[AGENTS.md](AGENTS.md)** in the root directory. This file contains:
+- Complete list of 24 specialized agents available for this project
+- What each agent does and how to invoke them
+- Recommended agents for different development tasks
+- How to properly delegate work to specialists
+
+**Failure to read AGENTS.md will result in inefficient development and missed opportunities to use expert agents.**
+
+---
+
 # VoicePerio
 
 **Voice-Controlled Periodontal Charting Assistant**
@@ -442,6 +454,15 @@ This will:
 
 Output: `dist/VoicePerio/VoicePerio.exe`
 
+### Build Options
+
+| Command | Description |
+|---------|-------------|
+| `build.bat` | Full build with all checks |
+| `build.bat --quick` | Quick build (skip model download) |
+| `build.bat --clean` | Clean and rebuild |
+| `build.bat --verify` | Verify existing build |
+
 ### Manual Build
 
 ```bash
@@ -455,13 +476,21 @@ pyinstaller installer/voiceperio.spec --noconfirm
 
 ```
 VoicePerio/
-├── VoicePerio.exe           # Main executable
+├── VoicePerio.exe              # Main executable
 ├── models/
-│   └── vosk-model-small-en-us/   # Required (~40MB)
-└── README.txt               # Quick start guide
+│   └── vosk-model-small-en-us/ # Required (~40MB)
+├── config.json                 # Default configuration
+├── README.txt                  # Quick start guide
+└── LICENSE.txt                 # MIT License
 ```
 
-**Total size**: ~50MB (mostly the speech model)
+**Total size**: ~100-150MB
+
+### Detailed Documentation
+
+For comprehensive build instructions, troubleshooting, and CI/CD integration, see:
+- [BUILD.md](BUILD.md) - Complete build process documentation
+- [DEPLOY.md](DEPLOY.md) - Distribution and deployment guide
 
 ---
 
