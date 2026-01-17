@@ -90,6 +90,7 @@ hiddenimports = [
     'voiceperio.gui.system_tray',
     'voiceperio.gui.floating_indicator',
     'voiceperio.gui.settings_dialog',
+    'voiceperio.gui.modern_medical_ui',
     
     # Utility modules
     'voiceperio.utils',

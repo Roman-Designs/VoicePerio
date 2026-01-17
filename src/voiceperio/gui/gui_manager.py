@@ -15,6 +15,7 @@ from pathlib import Path
 from .system_tray import SystemTray
 from .floating_indicator import FloatingIndicator
 from .settings_dialog import SettingsDialog
+from .modern_medical_ui import ModernMedicalUI
 
 logger = logging.getLogger(__name__)
 
@@ -55,27 +56,31 @@ class GUIManager(QObject):
         >>> gui_manager.show_command_feedback("three two three")
     """
     
-    def __init__(self, config_manager=None, app: Optional[QApplication] = None):
+    def __init__(self, config_manager=None, app: Optional[QApplication] = None, use_modern_ui: bool = True):
         """
         Initialize GUI Manager.
         
         Args:
             config_manager: ConfigManager instance for settings persistence
             app: QApplication instance
+            use_modern_ui: Use new ModernMedicalUI instead of FloatingIndicator (default True)
         """
         super().__init__()
         self.config = config_manager
         self.app = app or QApplication.instance()
+        self.use_modern_ui = use_modern_ui
         
         # Components
         self.tray: Optional[SystemTray] = None
         self.indicator: Optional[FloatingIndicator] = None
+        self.modern_ui: Optional[ModernMedicalUI] = None
         self.settings_dialog: Optional[SettingsDialog] = None
         
         # State tracking
         self.is_listening = False
         self.is_visible = True
         self.current_status = "Ready"
+        self.session_time_seconds = 0
         
         # Signals
         self.signals = GUIManagerSignals()
@@ -84,6 +89,11 @@ class GUIManager(QObject):
         self.update_timer = QTimer()
         self.update_timer.setSingleShot(False)
         self.update_timer.timeout.connect(self._on_update_timer)
+        
+        # Session timer (for elapsed time tracking)
+        self.session_timer = QTimer()
+        self.session_timer.setSingleShot(False)
+        self.session_timer.timeout.connect(self._on_session_timer)
         
         logger.debug("GUIManager initialized")
     
@@ -106,8 +116,13 @@ class GUIManager(QObject):
                 logger.error("Failed to setup system tray")
                 return False
             
-            # Create floating indicator
-            self.indicator = FloatingIndicator()
+            # Create appropriate UI based on setting
+            if self.use_modern_ui:
+                self.modern_ui = ModernMedicalUI()
+                logger.debug("ModernMedicalUI created")
+            else:
+                self.indicator = FloatingIndicator()
+                logger.debug("FloatingIndicator created")
             
             # Create settings dialog
             self.settings_dialog = SettingsDialog(self.config)
@@ -128,16 +143,26 @@ class GUIManager(QObject):
     def _connect_signals(self) -> None:
         """Connect signals between components"""
         # System tray signals
-        self.tray.signals.show_hide_requested.connect(self.toggle_visibility)
-        self.tray.signals.settings_requested.connect(self.show_settings)
-        self.tray.signals.toggle_listening_requested.connect(self.toggle_listening)
-        self.tray.signals.exit_requested.connect(self.signals.exit_requested.emit)
+        if self.tray:
+            self.tray.signals.show_hide_requested.connect(self.toggle_visibility)
+            self.tray.signals.settings_requested.connect(self.show_settings)
+            self.tray.signals.toggle_listening_requested.connect(self.toggle_listening)
+            self.tray.signals.exit_requested.connect(self.signals.exit_requested.emit)
         
-        # Floating indicator signals
-        self.indicator.close_requested.connect(self.hide_indicator)
+        # Floating indicator signals (old UI)
+        if self.indicator:
+            self.indicator.close_requested.connect(self.hide_indicator)
+        
+        # Modern medical UI signals
+        if self.modern_ui:
+            self.modern_ui.pause_requested.connect(self.toggle_listening)
+            self.modern_ui.save_requested.connect(self._on_save_requested)
+            self.modern_ui.settings_requested.connect(self.show_settings)
+            self.modern_ui.exit_requested.connect(self.signals.exit_requested.emit)
         
         # Settings dialog signals
-        self.settings_dialog.settings_changed.connect(self._on_settings_changed)
+        if self.settings_dialog:
+            self.settings_dialog.settings_changed.connect(self._on_settings_changed)
         
         # Internal signals
         self.signals.status_changed.connect(self._on_status_changed)
@@ -152,9 +177,17 @@ class GUIManager(QObject):
         Example:
             >>> manager.show()
         """
-        self.tray.show()
-        if self.config and self.config.get("gui.show_floating_indicator", True):
-            self.indicator.show()
+        if self.tray:
+            self.tray.show()
+        
+        # Show appropriate UI
+        if self.use_modern_ui:
+            if self.modern_ui and self.config and self.config.get("gui.show_floating_indicator", True):
+                self.modern_ui.show()
+        else:
+            if self.indicator and self.config and self.config.get("gui.show_floating_indicator", True):
+                self.indicator.show()
+        
         self.is_visible = True
         logger.debug("GUIManager components shown")
     
@@ -165,32 +198,50 @@ class GUIManager(QObject):
         Example:
             >>> manager.hide()
         """
-        self.tray.hide()
-        self.indicator.hide()
+        if self.tray:
+            self.tray.hide()
+        
+        if self.use_modern_ui:
+            if self.modern_ui:
+                self.modern_ui.hide()
+        else:
+            if self.indicator:
+                self.indicator.hide()
+        
         self.is_visible = False
         logger.debug("GUIManager components hidden")
     
     def show_indicator(self) -> None:
         """
-        Show the floating indicator.
+        Show the floating indicator / modern UI.
         
         Example:
             >>> manager.show_indicator()
         """
-        if self.indicator:
-            self.indicator.show()
-            logger.debug("Floating indicator shown")
+        if self.use_modern_ui:
+            if self.modern_ui:
+                self.modern_ui.show()
+                logger.debug("Modern medical UI shown")
+        else:
+            if self.indicator:
+                self.indicator.show()
+                logger.debug("Floating indicator shown")
     
     def hide_indicator(self) -> None:
         """
-        Hide the floating indicator.
+        Hide the floating indicator / modern UI.
         
         Example:
             >>> manager.hide_indicator()
         """
-        if self.indicator:
-            self.indicator.hide()
-            logger.debug("Floating indicator hidden")
+        if self.use_modern_ui:
+            if self.modern_ui:
+                self.modern_ui.hide()
+                logger.debug("Modern medical UI hidden")
+        else:
+            if self.indicator:
+                self.indicator.hide()
+                logger.debug("Floating indicator hidden")
     
     def toggle_visibility(self) -> None:
         """
@@ -216,8 +267,14 @@ class GUIManager(QObject):
         self.current_status = "Listening"
         if self.tray:
             self.tray.set_listening()
-        if self.indicator:
-            self.indicator.set_listening()
+        
+        if self.use_modern_ui:
+            if self.modern_ui:
+                self.modern_ui.set_status("listening")
+        else:
+            if self.indicator:
+                self.indicator.set_listening()
+        
         logger.debug("Status set to: Listening")
     
     def set_paused(self) -> None:
@@ -231,8 +288,14 @@ class GUIManager(QObject):
         self.current_status = "Paused"
         if self.tray:
             self.tray.set_paused()
-        if self.indicator:
-            self.indicator.set_paused()
+        
+        if self.use_modern_ui:
+            if self.modern_ui:
+                self.modern_ui.set_status("paused")
+        else:
+            if self.indicator:
+                self.indicator.set_paused()
+        
         logger.debug("Status set to: Paused")
     
     def set_sleeping(self) -> None:
@@ -246,8 +309,14 @@ class GUIManager(QObject):
         self.current_status = "Sleeping"
         if self.tray:
             self.tray.set_sleeping()
-        if self.indicator:
-            self.indicator.set_sleeping()
+        
+        if self.use_modern_ui:
+            if self.modern_ui:
+                self.modern_ui.set_status("sleeping")
+        else:
+            if self.indicator:
+                self.indicator.set_sleeping()
+        
         logger.debug("Status set to: Sleeping")
     
     def set_ready(self) -> None:
@@ -259,8 +328,14 @@ class GUIManager(QObject):
         """
         self.is_listening = False
         self.current_status = "Ready"
-        if self.indicator:
-            self.indicator.set_ready()
+        
+        if self.use_modern_ui:
+            if self.modern_ui:
+                self.modern_ui.set_status("ready")
+        else:
+            if self.indicator:
+                self.indicator.set_ready()
+        
         logger.debug("Status set to: Ready")
     
     def update_status(self, text: str) -> None:
@@ -325,8 +400,12 @@ class GUIManager(QObject):
     
     def _on_command_feedback(self, command: str) -> None:
         """Handle command feedback signal"""
-        if self.indicator:
-            self.indicator.update_command(command)
+        if self.use_modern_ui:
+            if self.modern_ui:
+                self.modern_ui.update_feedback(command, "success", "Recognized")
+        else:
+            if self.indicator:
+                self.indicator.update_command(command)
     
     def _on_settings_changed(self, settings: Dict[str, Any]) -> None:
         """Handle settings change from dialog"""
@@ -340,18 +419,31 @@ class GUIManager(QObject):
             return
         
         try:
-            # Apply indicator opacity
+            # Apply opacity
             opacity = self.config.get("gui.indicator_opacity", 0.9)
-            if self.indicator:
-                self.indicator.set_opacity(opacity)
+            
+            if self.use_modern_ui:
+                if self.modern_ui:
+                    self.modern_ui.set_opacity(opacity)
+            else:
+                if self.indicator:
+                    self.indicator.set_opacity(opacity)
             
             # Show/hide indicator
             show_indicator = self.config.get("gui.show_floating_indicator", True)
-            if self.indicator:
-                if show_indicator and self.is_visible:
-                    self.indicator.show()
-                else:
-                    self.indicator.hide()
+            
+            if self.use_modern_ui:
+                if self.modern_ui:
+                    if show_indicator and self.is_visible:
+                        self.modern_ui.show()
+                    else:
+                        self.modern_ui.hide()
+            else:
+                if self.indicator:
+                    if show_indicator and self.is_visible:
+                        self.indicator.show()
+                    else:
+                        self.indicator.hide()
             
             logger.debug("Settings applied to GUI components")
         
@@ -426,8 +518,15 @@ class GUIManager(QObject):
         """
         try:
             self.stop_update_timer()
-            if self.indicator:
-                self.indicator.close()
+            self.stop_session_timer()
+            
+            if self.use_modern_ui:
+                if self.modern_ui:
+                    self.modern_ui.close()
+            else:
+                if self.indicator:
+                    self.indicator.close()
+            
             if self.settings_dialog:
                 self.settings_dialog.close()
             if self.tray:
@@ -453,3 +552,35 @@ class GUIManager(QObject):
             Status text
         """
         return self.current_status
+    
+    def _on_session_timer(self) -> None:
+        """Update session time on modern UI"""
+        self.session_time_seconds += 1
+        if self.use_modern_ui and self.modern_ui:
+            self.modern_ui.set_session_time(self.session_time_seconds)
+    
+    def _on_save_requested(self) -> None:
+        """Handle save request from modern UI"""
+        logger.debug("Save requested from UI")
+        # Emit signal for main app to handle save
+        self.signals.command_feedback.emit("Save command")
+    
+    def start_session_timer(self) -> None:
+        """Start tracking session elapsed time"""
+        self.session_time_seconds = 0
+        self.session_timer.setInterval(1000)
+        self.session_timer.start()
+    
+    def stop_session_timer(self) -> None:
+        """Stop tracking session elapsed time"""
+        self.session_timer.stop()
+    
+    def set_field_counter(self, current: int, total: int) -> None:
+        """Update field counter on modern UI"""
+        if self.use_modern_ui and self.modern_ui:
+            self.modern_ui.set_field_counter(current, total)
+    
+    def set_last_entry(self, entry: str) -> None:
+        """Update last entry on modern UI"""
+        if self.use_modern_ui and self.modern_ui:
+            self.modern_ui.set_last_entry(entry)

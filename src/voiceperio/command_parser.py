@@ -101,10 +101,10 @@ class CommandParser:
         
         Main routing method that identifies the type of command and returns
         an appropriate Command object. Tries to match the text against:
-        1. Number sequences (e.g., "three two three")
-        2. Single numbers (e.g., "four")
-        3. Perio indicators (e.g., "bleeding")
-        4. Navigation commands (e.g., "next")
+        1. Navigation commands (e.g., "next", "skip 5") - FIRST to avoid number conflicts
+        2. Number sequences (e.g., "three two three")
+        3. Single numbers (e.g., "four")
+        4. Perio indicators (e.g., "bleeding")
         5. Actions (e.g., "enter")
         6. App control (e.g., "stop")
         
@@ -122,6 +122,13 @@ class CommandParser:
         
         logger.debug(f"Parsing text: '{text}'")
         
+        # TRY NAVIGATION FIRST (before number sequences)
+        # This prevents "skip 4" from being parsed as the number "4"
+        navigation = self._parse_navigation(text)
+        if navigation:
+            logger.debug(f"Matched as navigation command: {navigation}")
+            return navigation
+        
         # Try to parse as number sequence or single number
         if self.is_number_sequence(text):
             numbers = self.extract_numbers(text)
@@ -138,11 +145,6 @@ class CommandParser:
         indicator = self._parse_indicator(text)
         if indicator:
             return indicator
-        
-        # Try to parse as navigation command
-        navigation = self._parse_navigation(text)
-        if navigation:
-            return navigation
         
         # Try to parse as action
         action = self._parse_action(text)
@@ -278,6 +280,8 @@ class CommandParser:
         Matches text against navigation commands (next, previous, quadrant jumps, etc.)
         using fuzzy matching to handle speech variations.
         
+        Special handling for "skip N" format (e.g., "skip 5", "skip 2").
+        
         Args:
             text: Recognized speech text
             
@@ -289,33 +293,76 @@ class CommandParser:
         
         navigation_cmds = self.commands_db['navigation']
         
-        # Build list of all navigation names and aliases
+        # SPECIAL HANDLING: Check for "skip N" pattern BEFORE any fuzzy matching
+        words = text.split()
+        
+        # Check for "skip <number>" pattern (e.g., "skip 2", "skip 5")
+        if len(words) >= 2 and words[0].lower() in ['skip', 'skip\'s']:
+            # Extract the number part (could be one or more words)
+            number_words = ' '.join(words[1:]).lower()
+            if number_words in self.word_to_number:
+                skip_count = self.word_to_number[number_words]
+                logger.info(f"Parsed as skip_count: {skip_count} fields")
+                return Command(
+                    action='navigation',
+                    command='skip_count',
+                    nav_action='skip_fields',
+                    skip_count=skip_count
+                )
+        
+        # Check for plain "skip" or its aliases (without number)
+        if len(words) == 1:
+            word_lower = words[0].lower()
+            if word_lower in ['skip', 'skip\'s']:
+                logger.info("Parsed as skip (plain)")
+                return Command(
+                    action='navigation',
+                    command='skip',
+                    nav_action='skip_zeros'
+                )
+            # Check aliases for skip
+            skip_data = navigation_cmds.get('skip', {})
+            if 'aliases' in skip_data:
+                for alias in skip_data['aliases']:
+                    if alias.lower() == word_lower:
+                        logger.info(f"Parsed as skip (alias: {alias})")
+                        return Command(
+                            action='navigation',
+                            command='skip',
+                            nav_action='skip_zeros'
+                        )
+        
+        # Build list of all navigation names and aliases (excluding 'skip' variations)
         candidates: Dict[str, str] = {}  # Candidate text -> command name
         for cmd_name, cmd_data in navigation_cmds.items():
+            # Skip 'skip' and 'skip_count' - they're handled above
+            if cmd_name in ['skip', 'skip_count']:
+                continue
             candidates[cmd_name] = cmd_name
             if 'aliases' in cmd_data:
                 for alias in cmd_data['aliases']:
                     candidates[alias] = cmd_name
         
-        # Try fuzzy match
-        match = self.fuzzy_match(text, list(candidates.keys()), threshold=80)
-        
-        if match:
-            cmd_name = candidates[match]
-            cmd_data = navigation_cmds[cmd_name]
+        # Try fuzzy match on remaining navigation commands
+        if candidates:
+            match = self.fuzzy_match(text, list(candidates.keys()), threshold=80)
             
-            cmd_params: Dict[str, Any] = {
-                'command': cmd_name,
-                'nav_action': cmd_data.get('action', 'keystroke'),
-            }
-            
-            # Add action-specific parameters
-            for key in ['key', 'quadrant', 'side']:
-                if key in cmd_data:
-                    cmd_params[key] = cmd_data[key]
-            
-            logger.info(f"Parsed navigation: {cmd_name}")
-            return Command(action='navigation', **cmd_params)
+            if match:
+                cmd_name = candidates[match]
+                cmd_data = navigation_cmds[cmd_name]
+                
+                cmd_params: Dict[str, Any] = {
+                    'command': cmd_name,
+                    'nav_action': cmd_data.get('action', 'keystroke'),
+                }
+                
+                # Add action-specific parameters
+                for key in ['key', 'quadrant', 'side']:
+                    if key in cmd_data:
+                        cmd_params[key] = cmd_data[key]
+                
+                logger.info(f"Parsed navigation: {cmd_name}")
+                return Command(action='navigation', **cmd_params)
         
         return None
     
