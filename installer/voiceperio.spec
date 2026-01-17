@@ -80,6 +80,7 @@ hiddenimports = [
     'voiceperio.audio_capture',
     'voiceperio.speech_engine',
     'voiceperio.command_parser',
+    'voiceperio.number_grouper',
     'voiceperio.number_sequencer',
     'voiceperio.action_executor',
     
@@ -348,8 +349,8 @@ exe_options = {
     'upx': True,
     
     # Windowed mode (no console) - GUI application
-    # Temporarily set to True for debugging startup issues
-    'console': True,
+    # Set to False for production to hide console window
+    'console': False,
     
     # Show crash dialog even in windowed mode
     'disable_windowed_traceback': False,

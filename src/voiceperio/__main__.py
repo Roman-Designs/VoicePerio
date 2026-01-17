@@ -1,9 +1,11 @@
 """
 Entry point for VoicePerio application.
 Allows running the application with: python -m voiceperio
+Properly handles console window for both development and production builds.
 """
 
 import sys
+import os
 
 # Use absolute import for PyInstaller compatibility
 try:
@@ -12,4 +14,17 @@ except ImportError:
     from .main import main
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        exit_code = main()
+        sys.exit(exit_code)
+    except Exception as e:
+        # If running as GUI app without console, try to show error in system tray
+        try:
+            import logging
+            logger = logging.getLogger("voiceperio")
+            logger.error(f"Fatal error: {e}", exc_info=True)
+        except:
+            pass
+        
+        # Exit with error code
+        sys.exit(1)

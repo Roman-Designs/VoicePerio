@@ -1103,11 +1103,22 @@ def main() -> int:
     Returns:
         Exit code (0 for success, 1 for error)
     """
+    # Determine log file location
+    import os
+    from pathlib import Path
+    
+    # Use %APPDATA% for log file (not console output when running as GUI)
+    appdata = os.environ.get('APPDATA', os.path.expanduser('~'))
+    voiceperio_dir = Path(appdata) / 'VoicePerio'
+    voiceperio_dir.mkdir(parents=True, exist_ok=True)
+    log_file = voiceperio_dir / 'voiceperio.log'
+    
     # Setup logging
+    # console_output=False when running as windowed exe (no console window)
     setup_logging(
         log_level=logging.INFO,
-        log_file=None,  # Can be set to a file path
-        console_output=True
+        log_file=str(log_file),
+        console_output=False  # Disable console to avoid errors when running without console
     )
     
     logger.info("=" * 60)
