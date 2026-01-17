@@ -1,15 +1,3 @@
-⚠️ **IMPORTANT FOR AGENTS: READ AGENTS.md FIRST**
-
-Before starting ANY work on this project, you MUST read **[AGENTS.md](AGENTS.md)** in the root directory. This file contains:
-- Complete list of 24 specialized agents available for this project
-- What each agent does and how to invoke them
-- Recommended agents for different development tasks
-- How to properly delegate work to specialists
-
-**Failure to read AGENTS.md will result in inefficient development and missed opportunities to use expert agents.**
-
----
-
 # VoicePerio
 
 **Voice-Controlled Periodontal Charting Assistant**
@@ -634,50 +622,6 @@ If using Open Dental, Eaglesoft, or other software:
 2. Change "Target Window" to match your software's window title
 3. Test with a sample chart
 4. Adjust keystroke delay if entries are missed
-
----
-
-## Claude Code Development Instructions
-
-Build this application in the following phases:
-
-### Phase 1: Core Infrastructure
-1. Set up project structure
-2. Implement `config_manager.py`
-3. Implement `logger.py`
-4. Create `main.py` skeleton
-
-### Phase 2: Audio & Speech
-5. Implement `audio_capture.py`
-6. Download Vosk model
-7. Implement `speech_engine.py`
-8. Test: speak numbers, verify recognition
-
-### Phase 3: Command Processing
-9. Implement `command_parser.py`
-10. Implement `number_sequencer.py`
-11. Test: "three two three" → [3, 2, 3]
-
-### Phase 4: Keystroke Injection
-12. Implement `window_utils.py`
-13. Implement `action_executor.py`
-14. Test: inject keystrokes into Notepad
-
-### Phase 5: GUI
-15. Implement `system_tray.py`
-16. Implement `floating_indicator.py`
-17. Implement `settings_dialog.py`
-18. Implement `gui_manager.py`
-
-### Phase 6: Integration
-19. Wire all components in `main.py`
-20. Add global hotkey support
-21. End-to-end testing
-
-### Phase 7: Build & Package
-22. Finalize PyInstaller spec
-23. Build EXE
-24. Test on clean Windows machine
 
 ---
 
