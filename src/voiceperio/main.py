@@ -26,8 +26,9 @@ from PyQt6.QtCore import QObject, pyqtSignal, QTimer, QThread, pyqtSlot
 
 from .config_manager import ConfigManager
 from .audio_capture import AudioCapture
-from .speech_engine import SpeechEngine
+from .speech_engine import SpeechEngine, RecognitionResult
 from .command_parser import CommandParser, Command
+from .number_grouper import NumberGrouper, ParsedCommand, NumberGroup
 from .number_sequencer import NumberSequencer
 from .action_executor import ActionExecutor
 from .gui.gui_manager import GUIManager
@@ -108,6 +109,7 @@ class VoicePerioApp:
         self.audio_capture: Optional[AudioCapture] = None
         self.speech_engine: Optional[SpeechEngine] = None
         self.command_parser: Optional[CommandParser] = None
+        self.number_grouper: Optional[NumberGrouper] = None
         self.number_sequencer: Optional[NumberSequencer] = None
         self.action_executor: Optional[ActionExecutor] = None
         self.gui_manager: Optional[GUIManager] = None
@@ -357,16 +359,21 @@ class VoicePerioApp:
             # Try to find target window
             self.action_executor.find_target_window(target_window)
             
-            # Setup number sequencer
-            tab_after = self.config.get("behavior.tab_after_sequence", True) if self.config else True
+            # Setup number grouper (for timing-based number grouping)
+            pause_threshold = self.config.get("behavior.pause_threshold_ms", 300) if self.config else 300
+            self.number_grouper = NumberGrouper(
+                pause_threshold_ms=pause_threshold
+            )
             
+            # Setup number sequencer (for field entry)
+            advance_key = self.config.get("behavior.advance_key", "enter") if self.config else "enter"
             self.number_sequencer = NumberSequencer(
-                inter_number_delay_ms=keystroke_delay,
-                tab_after_sequence=tab_after
+                inter_entry_delay_ms=keystroke_delay,
+                advance_key=advance_key
             )
             self.number_sequencer.set_action_executor(self.action_executor)
             
-            logger.info("Action executor initialized")
+            logger.info("Action executor and number processing initialized")
             return True
         
         except Exception as e:
@@ -679,14 +686,14 @@ class VoicePerioApp:
                 if self.speech_engine:
                     result = self.speech_engine.process_audio(audio_chunk)
                     
-                    if result:
+                    if result and result.is_final:
                         # Emit partial result for GUI feedback
                         partial = self.speech_engine.get_partial()
                         if partial:
                             self.signals.partial_result.emit(partial)
                         
-                        # Parse and execute command
-                        self._process_recognized_text(result)
+                        # Process recognition result through number grouper
+                        self._process_recognition_result(result)
                 
             except Exception as e:
                 logger.error(f"Error in audio processing loop: {e}")
@@ -695,32 +702,157 @@ class VoicePerioApp:
         
         logger.info("Audio processing thread stopped")
     
-    def _process_recognized_text(self, text: str) -> None:
-        """Process recognized speech text"""
+    def _process_recognition_result(self, result: RecognitionResult) -> None:
+        """
+        Process recognition result using the new timing-based number grouper.
+        
+        This replaces the old _process_recognized_text method with improved
+        handling for timing-based number grouping.
+        """
         try:
-            if not text or not self.command_parser:
+            if not result or not result.text:
                 return
             
-            # Parse command
-            command = self.command_parser.parse(text)
-            if not command:
-                return
-            
-            # Execute command
-            success = self._execute_command(command)
+            # Use number grouper to parse the recognition result
+            if self.number_grouper:
+                parsed = self.number_grouper.parse_recognition(result)
+                success = self._execute_parsed_command(parsed)
+            else:
+                # Fallback to old command parser
+                if self.command_parser:
+                    command = self.command_parser.parse(result.text)
+                    if command:
+                        success = self._execute_command(command)
+                    else:
+                        success = False
+                else:
+                    success = False
             
             # Show feedback
             if self.gui_manager:
-                self.gui_manager.show_command_feedback(text)
+                self.gui_manager.show_command_feedback(result.text)
             
             # Emit signal
-            self.signals.command_executed.emit(text, success)
+            self.signals.command_executed.emit(result.text, success)
             
-            logger.info(f"Executed command: {command}")
+            logger.info(f"Processed recognition: '{result.text}' -> success={success}")
         
         except Exception as e:
-            logger.error(f"Error processing recognized text: {e}")
+            logger.error(f"Error processing recognition result: {e}")
             self._handle_error(f"Command processing error: {e}")
+    
+    def _process_recognized_text(self, text: str) -> None:
+        """
+        Legacy method for processing recognized text (backward compatibility).
+        
+        DEPRECATED: Use _process_recognition_result instead.
+        """
+        # Create a simple RecognitionResult without timing data
+        result = RecognitionResult(text=text, words=[], is_final=True)
+        self._process_recognition_result(result)
+    
+    def _execute_parsed_command(self, parsed: ParsedCommand) -> bool:
+        """
+        Execute a parsed command from the NumberGrouper.
+        
+        This is the new command execution path that handles timing-based
+        number grouping.
+        
+        Args:
+            parsed: ParsedCommand from NumberGrouper
+            
+        Returns:
+            True if execution successful
+        """
+        try:
+            cmd_type = parsed.command_type
+            
+            if cmd_type == "numbers":
+                # Enter number groups (timing-based)
+                if self.number_sequencer and parsed.number_groups:
+                    return self.number_sequencer.enter_number_groups(parsed.number_groups)
+                return False
+            
+            elif cmd_type == "next":
+                # Advance to next field
+                if self.number_sequencer:
+                    return self.number_sequencer.go_next()
+                return False
+            
+            elif cmd_type == "previous":
+                # Go to previous field
+                if self.number_sequencer:
+                    return self.number_sequencer.go_previous()
+                return False
+            
+            elif cmd_type == "skip":
+                # Skip with zeros (000)
+                if self.number_sequencer:
+                    return self.number_sequencer.skip_with_zeros()
+                return False
+            
+            elif cmd_type == "skip_count":
+                # Skip N fields
+                count = parsed.params.get("count", 1)
+                if self.number_sequencer:
+                    return self.number_sequencer.skip_fields(count)
+                return False
+            
+            elif cmd_type == "home":
+                # Go to first position
+                if self.number_sequencer:
+                    return self.number_sequencer.go_home()
+                return False
+            
+            elif cmd_type == "save":
+                # Save the exam
+                if self.number_sequencer:
+                    return self.number_sequencer.save()
+                return False
+            
+            elif cmd_type == "indicator":
+                # Handle perio indicators (bleeding, suppuration, etc.)
+                indicator = parsed.params.get("indicator", "")
+                return self._execute_indicator_from_parsed(indicator)
+            
+            elif cmd_type == "empty" or cmd_type == "unrecognized":
+                logger.debug(f"Unrecognized or empty command: '{parsed.raw_text}'")
+                return False
+            
+            else:
+                # Fallback to old command parser for unknown types
+                logger.debug(f"Unknown parsed command type: {cmd_type}, trying legacy parser")
+                if self.command_parser:
+                    command = self.command_parser.parse(parsed.raw_text)
+                    if command:
+                        return self._execute_command(command)
+                return False
+        
+        except Exception as e:
+            logger.error(f"Error executing parsed command: {e}")
+            return False
+    
+    def _execute_indicator_from_parsed(self, indicator: str) -> bool:
+        """Execute indicator from parsed command."""
+        if not self.action_executor:
+            return False
+        
+        # Map indicators to Dentrix keys
+        indicator_keys = {
+            "bleeding": "b",
+            "suppuration": "s",
+            "plaque": "a",
+            "calculus": "c",
+            "furcation": "g",
+            "mobility": "m",
+            "bone_loss": "l",
+            "recession": "r",
+        }
+        
+        key = indicator_keys.get(indicator)
+        if key:
+            return self.action_executor.send_keystroke(key)
+        return False
     
     def _execute_command(self, command: Command) -> bool:
         """
@@ -890,9 +1022,17 @@ class VoicePerioApp:
         if "keystroke_delay_ms" in settings and self.action_executor:
             self.action_executor.set_keystroke_delay(settings["keystroke_delay_ms"])
         
-        # Update number sequencer settings
-        if "tab_after_sequence" in settings and self.number_sequencer:
-            self.number_sequencer.tab_after_sequence = settings["tab_after_sequence"]
+        # Update number sequencer delay
+        if "keystroke_delay_ms" in settings and self.number_sequencer:
+            self.number_sequencer.inter_entry_delay_ms = settings["keystroke_delay_ms"]
+        
+        # Update number grouper pause threshold
+        if "pause_threshold_ms" in settings and self.number_grouper:
+            self.number_grouper.set_pause_threshold(settings["pause_threshold_ms"])
+        
+        # Update advance key
+        if "advance_key" in settings and self.number_sequencer:
+            self.number_sequencer.advance_key = settings["advance_key"]
         
         # Update target window
         if "window_title" in settings and self.action_executor:

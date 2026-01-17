@@ -448,10 +448,10 @@ class CommandParser:
             return None
         
         best_match: Optional[str] = None
-        best_score: int = 0
+        best_score = 0.0
         
         for candidate in candidates:
-            score = fuzz.ratio(text, candidate)
+            score = float(fuzz.ratio(text, candidate))
             if score > best_score and score >= threshold:
                 best_match = candidate
                 best_score = score

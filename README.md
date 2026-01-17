@@ -105,10 +105,28 @@ VoicePerio is a **standalone overlay application** that:
 
 ## Voice Command Reference
 
+### Timing-Based Number Entry (NEW)
+
+VoicePerio uses **timing-based grouping** to intelligently interpret your spoken numbers. Numbers spoken quickly together are entered as a single field value, while pauses indicate moving to the next field.
+
+**Example:** Saying "2, 232, 43, 3, 231" naturally with pauses produces:
+| Field | Entered Value |
+|-------|---------------|
+| 1 | 2 |
+| 2 | 232 |
+| 3 | 43 |
+| 4 | 3 |
+| 5 | 231 |
+
+**How it works:**
+- Words spoken within 300ms of each other are grouped as ONE field entry
+- A pause > 300ms indicates a NEW field entry
+- After each entry, the cursor automatically advances to the next field
+
 ### Pocket Depths (0-15)
 
-| Say | Types |
-|-----|-------|
+| Say | Enters |
+|-----|--------|
 | "zero" or "oh" | 0 |
 | "one" | 1 |
 | "two" | 2 |
@@ -116,61 +134,60 @@ VoicePerio is a **standalone overlay application** that:
 | ... | ... |
 | "fifteen" | 15 |
 
-### Number Sequences (3 at a time)
+### Number Combinations
 
-| Say | Types |
-|-----|-------|
-| "three two three" | 3 → Tab → 2 → Tab → 3 |
-| "four three three" | 4 → Tab → 3 → Tab → 3 |
-| "two two two" | 2 → Tab → 2 → Tab → 2 |
+| Say (quickly together) | Enters | Then |
+|------------------------|--------|------|
+| "three two three" | 323 | Advances to next field |
+| "four three" | 43 | Advances to next field |
+| "two" | 2 | Advances to next field |
 
-*Numbers are entered with Tab between each to advance fields.*
+*Speak numbers quickly together for multi-digit entries, pause to move to next field.*
 
-### Perio Indicators
+### Perio Indicators (Dentrix Enterprise)
 
-| Say | Action |
-|-----|--------|
-| "bleeding" / "bleed" / "BOP" | Marks bleeding on probing |
-| "suppuration" / "pus" | Marks suppuration |
-| "plaque" | Marks plaque present |
-| "calculus" / "tartar" | Marks calculus |
-| "furcation" / "furca" | Marks furcation |
-| "furcation one/two/three" | Marks Class I/II/III furcation |
-| "mobility" / "mobile" | Marks mobility |
-| "mobility one/two/three" | Marks Class I/II/III mobility |
-| "recession" | Marks recession |
+| Say | Dentrix Key | Action |
+|-----|-------------|--------|
+| "bleeding" / "bleed" / "BOP" | B | Marks bleeding on probing |
+| "suppuration" / "pus" | S | Marks suppuration |
+| "plaque" | A | Opens plaque context menu |
+| "calculus" / "tartar" | C | Marks calculus |
+| "furcation" / "furca" | G | Opens furcation menu |
+| "mobility" / "mobile" | M | Marks mobility |
+| "bone loss" / "bone" | L | Opens bone loss menu |
 
-### Navigation
+### Navigation (Dentrix Enterprise)
 
-| Say | Action |
-|-----|--------|
-| "next" / "next tooth" | Tab to next tooth |
-| "previous" / "back" | Shift+Tab to previous |
-| "skip" / "missing" | Skip tooth (Tab) |
-| "upper right" / "quadrant one" | Jump to UR quadrant |
-| "upper left" / "quadrant two" | Jump to UL quadrant |
-| "lower left" / "quadrant three" | Jump to LL quadrant |
-| "lower right" / "quadrant four" | Jump to LR quadrant |
-| "facial" / "buccal" | Switch to facial side |
-| "lingual" / "palatal" | Switch to lingual side |
+| Say | Dentrix Key | Action |
+|-----|-------------|--------|
+| "next" / "advance" | Enter | Move to next field |
+| "previous" / "back" | Page Up | Move to previous field |
+| "skip" / "missing" | - | Enter "000" and advance |
+| "skip five" (any number) | - | Skip 5 fields without entering data |
+| "home" / "start" | Home | Go to first position |
+| "switch" / "flip" | * | Toggle Facial/Lingual |
+| "facial" / "buccal" | - | Switch to facial side |
+| "lingual" / "palatal" | - | Switch to lingual side |
 
-### Actions
+### Actions (Dentrix Enterprise)
 
-| Say | Action |
-|-----|--------|
-| "enter" / "okay" | Press Enter |
-| "cancel" / "escape" | Press Escape |
-| "save" | Ctrl+S |
-| "undo" | Ctrl+Z |
-| "correction" / "scratch that" | Undo last entry |
+| Say | Dentrix Key | Action |
+|-----|-------------|--------|
+| "save" | Ctrl+S | Save current exam |
+| "new exam" | Ctrl+N | Start new exam |
+| "open" | Ctrl+O | Open existing exam |
+| "print" | F3 | Open print dialog |
+| "undo" / "correction" | Ctrl+Z | Undo last entry |
+| "clear" | Delete | Clear current selection |
+| "cancel" / "escape" | Escape | Cancel/close dialog |
 
 ### App Control
 
 | Say | Action |
 |-----|--------|
-| "voice perio wake" | Start listening |
+| "voice perio wake" / "listen" | Start listening |
 | "voice perio sleep" / "pause" | Pause listening |
-| "voice perio stop" | Exit application |
+| "voice perio stop" / "exit" | Exit application |
 
 ---
 
@@ -502,27 +519,77 @@ For comprehensive build instructions, troubleshooting, and CI/CD integration, se
 2. Run `VoicePerio.exe`
 3. Open your perio charting software (Dentrix, etc.)
 4. Click into the first probing depth field
-5. Start dictating: "three two three" ...
+5. Start dictating!
+
+### User Interface (No Command Prompt Needed)
+
+VoicePerio runs entirely in the background with a refined GUI interface:
+
+#### System Tray Icon
+- Located in Windows system tray (bottom-right of taskbar)
+- Right-click for menu: Show/Hide, Settings, Pause/Resume, Exit
+- Left-click to access quick actions
+- Shows listening status via icon indicator
+
+#### Floating Indicator Window
+- **Semi-transparent window** that floats above Dentrix
+- Shows **listening status** (Listening, Paused, Sleeping, Ready)
+- Displays **last recognized command** with real-time feedback
+- **Fully draggable** - position it anywhere on screen
+- **Auto-minimizes** when not needed
+- Color-coded indicators:
+  - 🎤 Green: Listening (actively recognizing speech)
+  - Orange: Paused (not listening)
+  - Gray: Sleeping (backgrounded)
+  - White: Ready (startup state)
+
+#### Settings Dialog
+- Access via system tray menu → Settings
+- Configure microphone input device
+- Adjust pause threshold for number grouping (default: 300ms)
+- Set keystroke delay for reliability
+- Adjust floating indicator opacity
+- Save target window title (Dentrix, Open Dental, etc.)
 
 ### Typical Workflow
 
-1. **Start VoicePerio** - icon appears in system tray
+1. **Start VoicePerio** - small icon appears in system tray
+   - Floating indicator shows in corner of screen
+   - Status says "Listening" (green with 🎤)
+
 2. **Open Dentrix** perio chart for patient
+   - No need to interact with VoicePerio window
+   - Floating indicator stays visible but out of way
+
 3. **Click** into first probing field (tooth 1, DB facial)
-4. **Dictate**: "three two three" → enters 3, 2, 3 across DB/B/MB
-5. **Dictate**: "bleeding" → marks BOP
-6. **Dictate**: "lingual" → (if needed to switch sides)
-7. **Dictate**: "three three two" → enters lingual readings
-8. **Dictate**: "next" → advances to next tooth
-9. **Repeat** for all teeth
-10. **Dictate**: "save" → saves chart
 
-### Tips
+4. **Just dictate naturally** - no console needed:
+   - "three two three" → enters 323, advances
+   - "bleeding" → marks BOP
+   - "skip 5" → skips 5 fields
+   - "next" → advances to next site
+   - etc.
 
-- Speak clearly and at a normal pace
-- Say "correction" or "scratch that" to undo
-- Say "voice perio sleep" to pause without closing
-- Say "voice perio wake" to resume
+5. **Floating indicator** updates in real-time showing what was recognized
+
+6. **When done** - say "save" to save the chart
+
+7. **Close VoicePerio** via system tray menu → Exit
+
+### Tips for Best Results
+
+- **Speak naturally** - don't rush or over-enunciate
+- **Use natural pauses** between different field entries
+  - "two three two" (quick) = one field with "232"
+  - "two [pause] three two" (with pause) = two separate fields
+- **The floating indicator is always visible** for feedback
+  - Don't try to cover it - it stays on top
+  - Drag it to position that doesn't interfere with Dentrix
+- **Pause the app** when not charting (system tray → Pause)
+  - Reduces CPU usage
+  - Resume with system tray menu or say "wake"
+- **Correct mistakes** with "correction" or "scratch that"
+- **System tray menu** accessible anytime for quick access
 
 ---
 

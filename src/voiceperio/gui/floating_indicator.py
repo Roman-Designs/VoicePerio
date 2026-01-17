@@ -126,9 +126,9 @@ class FloatingIndicator(QWidget):
         """Apply stylesheet for professional appearance"""
         style = """
             QWidget {
-                background-color: #1e1e1e;
+                background-color: #1a1a1a;
                 border: 2px solid #2196F3;
-                border-radius: 5px;
+                border-radius: 8px;
             }
             QLabel {
                 color: #ffffff;
@@ -137,11 +137,15 @@ class FloatingIndicator(QWidget):
                 background-color: #2196F3;
                 color: white;
                 border: none;
-                border-radius: 3px;
+                border-radius: 4px;
                 font-weight: bold;
+                padding: 2px;
             }
             QPushButton:hover {
                 background-color: #1976D2;
+            }
+            QPushButton:pressed {
+                background-color: #0d47a1;
             }
         """
         self.setStyleSheet(style)

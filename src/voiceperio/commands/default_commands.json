@@ -1,4 +1,8 @@
 {
+  "_comment": "Voice commands for VoicePerio with Dentrix Enterprise shortcuts",
+  "_version": "2.0",
+  "_updated": "2026-01-16",
+  
   "numbers": {
     "zero": 0,
     "oh": 0,
@@ -18,31 +22,38 @@
     "fourteen": 14,
     "fifteen": 15
   },
+  
   "perio_indicators": {
+    "_comment": "Dentrix Enterprise perio indicator shortcuts",
     "bleeding": {
       "aliases": ["bleed", "bop"],
       "action": "keystroke",
-      "key": "b"
+      "key": "b",
+      "description": "Mark bleeding on probing"
     },
     "suppuration": {
       "aliases": ["pus"],
       "action": "keystroke",
-      "key": "s"
+      "key": "s",
+      "description": "Mark suppuration"
     },
     "plaque": {
       "aliases": [],
-      "action": "keystroke",
-      "key": "p"
+      "action": "context_menu",
+      "key": "a",
+      "description": "Open plaque context menu (then press number)"
     },
     "calculus": {
       "aliases": ["tartar"],
       "action": "keystroke",
-      "key": "c"
+      "key": "c",
+      "description": "Mark calculus"
     },
     "furcation": {
       "aliases": ["furca"],
-      "action": "multi_keystroke",
-      "key": "f",
+      "action": "context_menu",
+      "key": "g",
+      "description": "Open furcation context menu",
       "classes": {
         "one": "1",
         "two": "2",
@@ -53,53 +64,56 @@
       "aliases": ["mobile"],
       "action": "multi_keystroke",
       "key": "m",
+      "description": "Mark mobility",
       "classes": {
         "one": "1",
         "two": "2",
         "three": "3"
       }
     },
-    "recession": {
-      "aliases": [],
-      "action": "keystroke",
-      "key": "r"
+    "bone_loss": {
+      "aliases": ["bone"],
+      "action": "context_menu",
+      "key": "l",
+      "description": "Open bone loss context menu"
     }
   },
+  
   "navigation": {
+    "_comment": "Dentrix Enterprise navigation shortcuts",
     "next": {
-      "aliases": ["next tooth"],
+      "aliases": ["next field", "advance"],
       "action": "keystroke",
-      "key": "tab"
+      "key": "enter",
+      "description": "Advance to next field in current path"
     },
     "previous": {
       "aliases": ["back", "prev"],
       "action": "keystroke",
-      "key": "shift+tab"
+      "key": "pageup",
+      "description": "Go to previous field"
     },
     "skip": {
       "aliases": ["missing"],
+      "action": "skip_zeros",
+      "description": "Enter 000 and advance to next field"
+    },
+    "skip_count": {
+      "aliases": [],
+      "action": "skip_fields",
+      "description": "Skip N fields (e.g., 'skip five' skips 5 fields)"
+    },
+    "home": {
+      "aliases": ["start", "beginning"],
       "action": "keystroke",
-      "key": "tab"
+      "key": "home",
+      "description": "Go to first position in navigation script"
     },
-    "upper_right": {
-      "aliases": ["quadrant one", "ur"],
-      "action": "jump_quadrant",
-      "quadrant": 1
-    },
-    "upper_left": {
-      "aliases": ["quadrant two", "ul"],
-      "action": "jump_quadrant",
-      "quadrant": 2
-    },
-    "lower_left": {
-      "aliases": ["quadrant three", "ll"],
-      "action": "jump_quadrant",
-      "quadrant": 3
-    },
-    "lower_right": {
-      "aliases": ["quadrant four", "lr"],
-      "action": "jump_quadrant",
-      "quadrant": 4
+    "toggle_surface": {
+      "aliases": ["switch", "flip"],
+      "action": "keystroke",
+      "key": "*",
+      "description": "Toggle between Facial and Lingual"
     },
     "facial": {
       "aliases": ["buccal"],
@@ -110,23 +124,50 @@
       "aliases": ["palatal"],
       "action": "switch_side",
       "side": "lingual"
+    },
+    "clear_side": {
+      "aliases": ["clear tooth"],
+      "action": "keystroke",
+      "key": "ctrl+delete",
+      "description": "Clear all data for selected side of tooth"
     }
   },
+  
   "actions": {
+    "_comment": "Dentrix Enterprise action shortcuts",
     "enter": {
-      "aliases": ["okay", "ok"],
+      "aliases": ["okay", "ok", "confirm"],
       "action": "keystroke",
       "key": "enter"
     },
     "cancel": {
-      "aliases": ["escape", "esc"],
+      "aliases": ["escape", "esc", "abort"],
       "action": "keystroke",
       "key": "escape"
     },
     "save": {
+      "aliases": ["save exam", "save chart"],
+      "action": "keystroke",
+      "key": "ctrl+s",
+      "description": "Save current exam (Ctrl+S)"
+    },
+    "new_exam": {
+      "aliases": ["new"],
+      "action": "keystroke",
+      "key": "ctrl+n",
+      "description": "Start new exam (Ctrl+N)"
+    },
+    "open_exam": {
+      "aliases": ["open"],
+      "action": "keystroke",
+      "key": "ctrl+o",
+      "description": "Open existing exam (Ctrl+O)"
+    },
+    "print": {
       "aliases": [],
       "action": "keystroke",
-      "key": "ctrl+s"
+      "key": "f3",
+      "description": "Open print dialog (F3)"
     },
     "undo": {
       "aliases": [],
@@ -134,26 +175,47 @@
       "key": "ctrl+z"
     },
     "correction": {
-      "aliases": ["scratch that", "scratch"],
+      "aliases": ["scratch that", "scratch", "oops"],
       "action": "keystroke",
-      "key": "ctrl+z"
+      "key": "ctrl+z",
+      "description": "Undo last entry"
+    },
+    "clear": {
+      "aliases": ["clear field"],
+      "action": "keystroke",
+      "key": "delete",
+      "description": "Clear current selection"
+    },
+    "zoom": {
+      "aliases": ["quadrant zoom"],
+      "action": "keystroke",
+      "key": "ctrl+z",
+      "description": "Quadrant zoom display"
     }
   },
+  
   "app_control": {
     "wake": {
-      "aliases": ["voice perio wake", "start listening"],
+      "aliases": ["voice perio wake", "start listening", "listen"],
       "action": "app_control",
       "command": "wake"
     },
     "sleep": {
-      "aliases": ["voice perio sleep", "pause", "voice perio pause"],
+      "aliases": ["voice perio sleep", "pause", "voice perio pause", "stop listening"],
       "action": "app_control",
       "command": "sleep"
     },
     "stop": {
-      "aliases": ["voice perio stop", "exit"],
+      "aliases": ["voice perio stop", "exit", "quit"],
       "action": "app_control",
       "command": "stop"
     }
+  },
+  
+  "settings": {
+    "_comment": "Runtime settings for voice recognition and keystroke behavior",
+    "pause_threshold_ms": 300,
+    "inter_entry_delay_ms": 50,
+    "advance_key": "enter"
   }
 }
