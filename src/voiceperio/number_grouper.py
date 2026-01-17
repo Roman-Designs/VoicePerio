@@ -16,6 +16,8 @@ number words. Words spoken within the threshold are grouped together.
 from typing import List, Optional, Dict, Any, NamedTuple
 from dataclasses import dataclass
 import logging
+from rapidfuzz import fuzz
+from difflib import SequenceMatcher
 
 from .speech_engine import TimedWord, RecognitionResult
 
@@ -142,6 +144,28 @@ class NumberGrouper:
         self.action_words = {"save", "home", "bleeding", "suppuration", "pus", 
                            "plaque", "calculus", "furcation", "mobility", "recession"}
         
+        # Phonetic confusion mappings for speech recognition errors
+        self.phonetic_confusions = {
+            'for': ['four'],
+            'four': ['for'],
+            'to': ['two', 'too'],
+            'two': ['to', 'too'],
+            'too': ['to', 'two'],
+            'won': ['one'],
+            'one': ['won'],
+            'ate': ['eight'],
+            'eight': ['ate'],
+            'sex': ['six'],
+            'six': ['sex'],
+            'niner': ['nine'],
+            'nine': ['niner'],
+            'fife': ['five'],
+            'five': ['fife', 'fiv'],
+            'fiv': ['five', 'fife'],
+            'zen': ['ten'],
+            'ten': ['zen'],
+        }
+        
         logger.info(f"NumberGrouper initialized: threshold={pause_threshold_ms}ms")
     
     def set_pause_threshold(self, threshold_ms: float) -> None:
@@ -205,9 +229,59 @@ class NumberGrouper:
         logger.debug(f"Unrecognized command: '{text_lower}'")
         return ParsedCommand(command_type="unrecognized", raw_text=result.text)
     
+    def match_number_word(self, word: str, threshold: int = 75) -> Optional[str]:
+        """
+        Match a word to a number word using fuzzy matching.
+        
+        Handles speech recognition errors:
+        - "four" heard as "for"
+        - "two" heard as "to"
+        - etc.
+        
+        Args:
+            word: Word to match
+            threshold: Match score threshold (0-100)
+            
+        Returns:
+            Matched number word or None if no good match
+        """
+        word_lower = word.lower()
+        
+        # First try exact match
+        if word_lower in WORD_TO_DIGIT:
+            return word_lower
+        
+        # Check phonetic confusions
+        if word_lower in self.phonetic_confusions:
+            for variant in self.phonetic_confusions[word_lower]:
+                if variant in WORD_TO_DIGIT:
+                    logger.debug(f"Phonetic match: '{word}' -> '{variant}'")
+                    return variant
+        
+        # Try fuzzy matching
+        best_match: Optional[str] = None
+        best_score = 0.0
+        
+        for num_word in WORD_TO_DIGIT.keys():
+            score = float(fuzz.ratio(word_lower, num_word))
+            if score > best_score and score >= threshold:
+                best_match = num_word
+                best_score = score
+        
+        if best_match:
+            logger.debug(f"Fuzzy matched '{word}' -> '{best_match}' (score={best_score:.1f})")
+            return best_match
+        
+        return None
+    
     def group_numbers(self, words: List[TimedWord]) -> List[NumberGroup]:
         """
         Group number words based on timing gaps.
+        
+        Uses fuzzy matching to handle speech recognition errors where:
+        - "four" is heard as "for"
+        - "two" is heard as "to"
+        - etc.
         
         Args:
             words: List of TimedWord objects from speech recognition
@@ -218,8 +292,18 @@ class NumberGrouper:
         if not words:
             return []
         
-        # Filter to only number words
-        number_words = [w for w in words if w.word.lower() in WORD_TO_DIGIT]
+        # Filter to number words (using fuzzy matching for robustness)
+        number_words = []
+        for w in words:
+            matched_word = self.match_number_word(w.word, threshold=75)
+            if matched_word:
+                # Create a new TimedWord with the corrected word
+                number_words.append(TimedWord(
+                    word=matched_word,
+                    start=w.start,
+                    end=w.end,
+                    confidence=w.confidence
+                ))
         
         if not number_words:
             return []

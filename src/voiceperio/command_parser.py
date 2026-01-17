@@ -3,10 +3,11 @@ Command Parser Module - Speech to command interpretation
 Converts recognized speech text to executable commands
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 import json
 import logging
 from rapidfuzz import fuzz
+from difflib import SequenceMatcher
 
 
 logger = logging.getLogger(__name__)
@@ -95,6 +96,113 @@ class CommandParser:
             logger.error(f"Failed to load commands: {e}")
             return False
     
+    def match_number_word(self, text: str, threshold: int = 75) -> Optional[int]:
+        """
+        Match a word to a number using fuzzy matching.
+        
+        Handles speech recognition errors where:
+        - "four" is heard as "for"
+        - "two" is heard as "to"
+        - "five" is heard as "fife" or "five"
+        - etc.
+        
+        Uses fuzzy string matching to find the closest number word match.
+        
+        Args:
+            text: Word to match to a number
+            threshold: Match score threshold (0-100), default 75
+            
+        Returns:
+            Matched number value (0-15) or None if no good match
+        """
+        text = text.lower().strip()
+        
+        if not text or not self.word_to_number:
+            return None
+        
+        # First try exact match (fastest path)
+        if text in self.word_to_number:
+            return self.word_to_number[text]
+        
+        # Try fuzzy matching against all known number words
+        best_match: Optional[str] = None
+        best_score = 0.0
+        
+        for number_word in self.word_to_number.keys():
+            score = float(fuzz.ratio(text, number_word))
+            
+            # Also consider phonetic similarity
+            # For common mishearings: "for"→"four", "to"→"two", etc.
+            phonetic_bonus = self._phonetic_similarity(text, number_word) * 5
+            adjusted_score = score + phonetic_bonus
+            
+            if adjusted_score > best_score and adjusted_score >= threshold:
+                best_match = number_word
+                best_score = adjusted_score
+        
+        if best_match:
+            matched_number = self.word_to_number[best_match]
+            logger.debug(f"Matched '{text}' -> '{best_match}' ({matched_number}) with score {best_score:.1f}")
+            return matched_number
+        
+        logger.debug(f"No match found for '{text}' (best score: {best_score:.1f})")
+        return None
+    
+    def _phonetic_similarity(self, word1: str, word2: str) -> float:
+        """
+        Calculate phonetic similarity between two words.
+        
+        Uses common speech recognition mishearing patterns:
+        - "for" ↔ "four"
+        - "to" ↔ "two"
+        - "won" ↔ "one"
+        - "ate" ↔ "eight"
+        - etc.
+        
+        Args:
+            word1: First word
+            word2: Second word
+            
+        Returns:
+            Phonetic similarity score (0-1)
+        """
+        # Common phonetic confusions in speech recognition
+        confusions = {
+            'for': ['four'],
+            'four': ['for'],
+            'to': ['two', 'too'],
+            'two': ['to', 'too'],
+            'too': ['to', 'two'],
+            'won': ['one'],
+            'one': ['won'],
+            'ate': ['eight'],
+            'eight': ['ate'],
+            'sex': ['six'],
+            'six': ['sex'],
+            'niner': ['nine'],
+            'nine': ['niner'],
+            'fife': ['five'],
+            'five': ['fife', 'fiv'],
+            'fiv': ['five', 'fife'],
+            'seven': ['sevun', 'sev\'n'],
+            'sevun': ['seven'],
+            'zen': ['ten'],
+            'ten': ['zen'],
+            'teen': ['ten'],
+        }
+        
+        # Check if there's a known phonetic relationship
+        word1_lower = word1.lower()
+        word2_lower = word2.lower()
+        
+        if word1_lower in confusions:
+            if word2_lower in confusions[word1_lower]:
+                return 1.0
+        
+        # Fallback: use sequence matcher for similarity
+        matcher = SequenceMatcher(None, word1_lower, word2_lower)
+        return matcher.ratio()
+    
     def parse(self, text: str) -> Optional[Command]:
         """
         Parse recognized speech text into a command.
@@ -166,6 +274,11 @@ class CommandParser:
         Validates that text contains primarily number words and that the sequence
         length is 1-6 numbers (typical perio pocket depth format: 1 to 6 sites).
         
+        Uses fuzzy matching to handle speech recognition errors:
+        - "four" misheard as "for"
+        - "two" misheard as "to"
+        - etc.
+        
         Args:
             text: Text to check
             
@@ -180,24 +293,33 @@ class CommandParser:
         # Split text into tokens
         words = text.split()
         
-        # Check if all words are valid number words
-        number_words = [w for w in words if w in self.word_to_number]
+        # Try to match each word to a number (using fuzzy matching)
+        matched_numbers = []
+        for w in words:
+            matched_num = self.match_number_word(w, threshold=75)
+            if matched_num is not None:
+                matched_numbers.append(matched_num)
         
         # Valid sequence if all words are numbers and count is 1-6
         is_valid = (
-            len(number_words) == len(words) and
-            1 <= len(number_words) <= 6
+            len(matched_numbers) == len(words) and
+            1 <= len(matched_numbers) <= 6
         )
         
-        logger.debug(f"is_number_sequence('{text}'): {is_valid} (found {len(number_words)} numbers)")
+        logger.debug(f"is_number_sequence('{text}'): {is_valid} (found {len(matched_numbers)} numbers)")
         return is_valid
     
     def extract_numbers(self, text: str) -> List[int]:
         """
         Extract numbers from text.
         
-        Converts number words to integer values using the word-to-number mapping.
+        Converts number words to integer values using fuzzy matching.
         Maintains order of numbers as spoken. Handles single and multiple numbers.
+        
+        Uses fuzzy matching to handle speech recognition errors:
+        - "four" → 4 (even if heard as "for")
+        - "two" → 2 (even if heard as "to")
+        - etc.
         
         Args:
             text: Text containing number words (e.g., "three two three")
@@ -212,13 +334,20 @@ class CommandParser:
             logger.warning(f"Cannot extract numbers: text='{text}', mapping available={bool(self.word_to_number)}")
             return numbers
         
-        # Split text into words and convert to numbers
+        # Split text into words and convert to numbers using fuzzy matching
         words = text.split()
         for word in words:
+            # Try exact match first (fast path)
             if word in self.word_to_number:
                 numbers.append(self.word_to_number[word])
             else:
-                logger.debug(f"Word '{word}' not recognized as number")
+                # Fall back to fuzzy matching for misheard words
+                matched_num = self.match_number_word(word, threshold=75)
+                if matched_num is not None:
+                    numbers.append(matched_num)
+                    logger.debug(f"Fuzzy matched '{word}' to {matched_num}")
+                else:
+                    logger.debug(f"Word '{word}' not recognized as number (no match above threshold)")
         
         logger.debug(f"Extracted numbers from '{text}': {numbers}")
         return numbers
