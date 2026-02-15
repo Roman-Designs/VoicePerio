@@ -1,3 +1,130 @@
+# VoicePerio v2.1.0 Release Notes
+
+**Release Date:** February 14, 2026  
+**Version:** 2.1.0 (Portable USB Release)  
+**Platform:** Windows 10/11 (64-bit)  
+**Distribution:** Portable USB Bundle (No Installation Required)
+
+---
+
+## VoicePerio v2.1.0 - Portable USB Release
+
+This release introduces a **portable deployment option** for environments where installing software or running `.exe` files is restricted. VoicePerio can now run entirely from a USB drive or extracted folder with zero installation — no Python, no admin rights, no `.exe` installer needed.
+
+---
+
+## What's New in v2.1.0
+
+### Portable USB Deployment
+
+The headline feature of this release. VoicePerio can now be deployed on locked-down corporate and clinical workstations where IT policies block executable installers.
+
+- **No installation required** — runs directly from a USB drive or any folder
+- **No admin rights needed** — no system-level changes, no registry entries
+- **Fully self-contained** — includes portable Python runtime, all dependencies, and the Vosk speech model
+- **Nothing left behind** — remove the USB drive and the system is untouched
+- **Works on restricted machines** — bypasses policies that block `.exe` installers
+
+### Automated Cloud Build via GitHub Actions
+
+A new GitHub Actions workflow builds the portable bundle automatically on Microsoft's Windows servers. No Windows machine needed to create the bundle.
+
+- **One-click build** — trigger from the GitHub Actions tab
+- **Downloads as a zip** — ready to extract and deploy
+- **Reproducible** — same build every time, no manual steps
+- **Includes everything** — Python 3.10 Embeddable, pip packages, Vosk model, application code
+
+### How to Get the Portable Bundle
+
+1. Go to the [Actions tab](https://github.com/Roman-Designs/VoicePerio/actions) on GitHub
+2. Select **"Build Portable USB Bundle"**
+3. Click **"Run workflow"**
+4. Wait 5-10 minutes for the build to complete
+5. Download `VoicePerio_Portable.zip` from the workflow artifacts
+
+### How to Use the Portable Bundle
+
+1. Extract `VoicePerio_Portable.zip` to a USB drive or any folder
+2. Double-click `VoicePerio_Launch.bat`
+3. VoicePerio starts — that's it
+
+### Bundle Contents
+
+```
+VoicePerio_Portable/
+    VoicePerio_Launch.bat           # Double-click to start
+    USB_INSTRUCTIONS.md             # Setup and troubleshooting guide
+    python/                         # Portable Python 3.10 runtime (~15MB)
+    app/
+        src/voiceperio/             # Application source code
+    models/
+        vosk-model-small-en-us/     # Speech recognition model (~40MB)
+```
+
+---
+
+## All Features
+
+VoicePerio is a hands-free voice recognition application for periodontal charting. All features from v2.0.0 are included:
+
+- **Voice-controlled pocket depth entry** — say "three two three" and it types into Dentrix
+- **Timing-based number grouping** — natural pauses separate field entries
+- **Perio indicators** — bleeding, suppuration, furcation, mobility, recession
+- **Navigation commands** — next, previous, skip, quadrant jumps, facial/lingual switching
+- **Works with any dental software** — Dentrix, Open Dental, Eaglesoft, or any app with keyboard input
+- **100% offline** — all speech recognition runs locally, HIPAA compliant
+- **Modern medical UI** — compact overlay with status indicator, command feedback, and session info
+- **Global hotkeys** — Ctrl+Shift+V to toggle listening, and more
+- **Fuzzy speech matching** — handles common recognition errors (four/for, two/to, etc.)
+
+---
+
+## System Requirements
+
+| Component | Requirement |
+|-----------|-------------|
+| **OS** | Windows 10 or 11 (64-bit) |
+| **RAM** | 4 GB minimum |
+| **Storage** | ~500 MB (on USB drive or local folder) |
+| **Microphone** | Any Windows-compatible microphone |
+| **Installation** | None |
+| **Admin Rights** | Not required (may be needed for keystroke injection into some apps) |
+
+---
+
+## Known Issues
+
+- **Antivirus warnings** — Some antivirus software may flag the portable Python runtime. Add the folder to exclusions if needed.
+- **USB drive speed** — Running from a slow USB 2.0 drive may cause longer startup times. For best performance, copy the folder to the local desktop.
+- **Blocked .bat files** — In rare cases, corporate policy may also block `.bat` files. Try renaming to `.cmd` as a workaround.
+- **Run as Administrator** — Keystroke injection into elevated applications (like Dentrix running as admin) may require right-clicking the `.bat` file and selecting "Run as administrator."
+
+---
+
+## Changelog
+
+### v2.1.0 (2026-02-14)
+
+#### Added
+- Portable USB deployment — run VoicePerio from any folder or USB drive with no installation
+- GitHub Actions workflow for automated portable bundle builds on Windows
+- `VoicePerio_Launch.bat` — one-click launcher for the portable bundle
+- `build_portable_usb.bat` — local build script for creating the portable bundle on a Windows machine
+- `USB_INSTRUCTIONS.md` — deployment and troubleshooting guide for portable installations
+- Automatic Vosk model download during CI build
+
+#### Changed
+- None (all existing functionality preserved)
+
+#### Fixed
+- None
+
+---
+
+## Previous Releases
+
+---
+
 # VoicePerio v2.0.0 Release Notes
 
 **Release Date:** January 16, 2026  
