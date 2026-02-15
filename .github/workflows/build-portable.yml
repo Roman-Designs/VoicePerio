@@ -1,0 +1,132 @@
+name: Build Portable USB Bundle
+
+on:
+  workflow_dispatch:  # Manual trigger only - click "Run workflow" on GitHub
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Python Embeddable
+        shell: pwsh
+        run: |
+          $pythonVersion = "3.10.11"
+          $url = "https://www.python.org/ftp/python/$pythonVersion/python-$pythonVersion-embed-amd64.zip"
+          $outDir = "VoicePerio_Portable"
+          
+          # Create directory structure
+          New-Item -ItemType Directory -Path "$outDir/python" -Force
+          New-Item -ItemType Directory -Path "$outDir/app" -Force
+          New-Item -ItemType Directory -Path "$outDir/models" -Force
+          
+          # Download and extract Python Embeddable
+          Write-Host "Downloading Python $pythonVersion Embeddable..."
+          Invoke-WebRequest -Uri $url -OutFile "python_embed.zip"
+          Expand-Archive -Path "python_embed.zip" -DestinationPath "$outDir/python" -Force
+          Remove-Item "python_embed.zip"
+          
+          # Enable site-packages by uncommenting 'import site' in ._pth file
+          $pthFile = Get-ChildItem "$outDir/python" -Filter "python*._pth" | Select-Object -First 1
+          if ($pthFile) {
+            (Get-Content $pthFile.FullName) -replace '#import site', 'import site' | Set-Content $pthFile.FullName
+            Write-Host "Enabled site-packages in $($pthFile.Name)"
+          }
+
+      - name: Install pip in portable Python
+        shell: pwsh
+        run: |
+          $pythonExe = "VoicePerio_Portable/python/python.exe"
+          
+          # Download and run get-pip.py
+          Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile "get-pip.py"
+          & $pythonExe get-pip.py --no-warn-script-location
+          Remove-Item "get-pip.py"
+
+      - name: Install VoicePerio dependencies
+        shell: pwsh
+        run: |
+          $pythonExe = "VoicePerio_Portable/python/python.exe"
+          
+          Write-Host "Installing VoicePerio dependencies..."
+          & $pythonExe -m pip install --no-warn-script-location `
+            "vosk>=0.3.45" `
+            "sounddevice>=0.4.6" `
+            "pyautogui>=0.9.54" `
+            "pynput>=1.7.6" `
+            "PyQt6>=6.5.0" `
+            "numpy>=1.24.0" `
+            "keyboard>=0.13.5" `
+            "pywin32>=306" `
+            "rapidfuzz>=3.2.0" `
+            "jsonschema>=4.19.0" `
+            "colorlog>=6.7.0"
+
+      - name: Download Vosk speech model
+        shell: pwsh
+        run: |
+          $modelUrl = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"
+          $modelsDir = "VoicePerio_Portable/models"
+          
+          Write-Host "Downloading Vosk speech model (~40MB)..."
+          Invoke-WebRequest -Uri $modelUrl -OutFile "vosk-model.zip"
+          
+          Write-Host "Extracting model..."
+          Expand-Archive -Path "vosk-model.zip" -DestinationPath $modelsDir -Force
+          Remove-Item "vosk-model.zip"
+          
+          # Rename to standard name (the zip extracts as vosk-model-small-en-us-0.15)
+          $extracted = Get-ChildItem $modelsDir -Directory | Select-Object -First 1
+          if ($extracted.Name -ne "vosk-model-small-en-us") {
+            Rename-Item $extracted.FullName "vosk-model-small-en-us"
+          }
+          
+          Write-Host "Model installed at: $modelsDir/vosk-model-small-en-us"
+
+      - name: Copy VoicePerio application files
+        shell: pwsh
+        run: |
+          $outDir = "VoicePerio_Portable"
+          
+          # Copy source code
+          Copy-Item -Path "src" -Destination "$outDir/app/src" -Recurse
+          
+          # Copy default commands if at root level
+          if (Test-Path "default_commands.json") {
+            Copy-Item "default_commands.json" "$outDir/app/"
+          }
+          
+          # Copy download script for future model updates
+          if (Test-Path "download_model.py") {
+            Copy-Item "download_model.py" "$outDir/app/"
+          }
+          
+          # Copy logo
+          if (Test-Path "VoicePerio.png") {
+            Copy-Item "VoicePerio.png" "$outDir/app/"
+          }
+          
+          # Copy the launcher
+          Copy-Item "VoicePerio_Launch.bat" "$outDir/"
+          
+          # Copy instructions
+          Copy-Item "USB_INSTRUCTIONS.md" "$outDir/"
+
+      - name: Create final zip
+        shell: pwsh
+        run: |
+          Write-Host "Creating VoicePerio_Portable.zip..."
+          Compress-Archive -Path "VoicePerio_Portable" -DestinationPath "VoicePerio_Portable.zip" -CompressionLevel Optimal
+          
+          $size = (Get-Item "VoicePerio_Portable.zip").Length / 1MB
+          Write-Host "Bundle size: $([math]::Round($size, 1)) MB"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VoicePerio_Portable
+          path: VoicePerio_Portable.zip
+          retention-days: 30
