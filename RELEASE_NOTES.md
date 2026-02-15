@@ -25,28 +25,13 @@ The headline feature of this release. VoicePerio can now be deployed on locked-d
 - **Nothing left behind** — remove the USB drive and the system is untouched
 - **Works on restricted machines** — bypasses policies that block `.exe` installers
 
-### Automated Cloud Build via GitHub Actions
+### Download
 
-A new GitHub Actions workflow builds the portable bundle automatically on Microsoft's Windows servers. No Windows machine needed to create the bundle.
+The portable bundle is available as a zip file attached to this release.
 
-- **One-click build** — trigger from the GitHub Actions tab
-- **Downloads as a zip** — ready to extract and deploy
-- **Reproducible** — same build every time, no manual steps
-- **Includes everything** — Python 3.10 Embeddable, pip packages, Vosk model, application code
-
-### How to Get the Portable Bundle
-
-1. Go to the [Actions tab](https://github.com/Roman-Designs/VoicePerio/actions) on GitHub
-2. Select **"Build Portable USB Bundle"**
-3. Click **"Run workflow"**
-4. Wait 5-10 minutes for the build to complete
-5. Download `VoicePerio_Portable.zip` from the workflow artifacts
-
-### How to Use the Portable Bundle
-
-1. Extract `VoicePerio_Portable.zip` to a USB drive or any folder
-2. Double-click `VoicePerio_Launch.bat`
-3. VoicePerio starts — that's it
+1. Download **`VoicePerio_Portable.zip`** from the [Releases page](https://github.com/Roman-Designs/VoicePerio/releases)
+2. Extract to a USB drive or any folder
+3. Double-click `VoicePerio_Launch.bat` to start
 
 ### Bundle Contents
 
@@ -107,11 +92,11 @@ VoicePerio is a hands-free voice recognition application for periodontal chartin
 
 #### Added
 - Portable USB deployment — run VoicePerio from any folder or USB drive with no installation
-- GitHub Actions workflow for automated portable bundle builds on Windows
+- Pre-built portable bundle available as a release download (`VoicePerio_Portable.zip`)
 - `VoicePerio_Launch.bat` — one-click launcher for the portable bundle
-- `build_portable_usb.bat` — local build script for creating the portable bundle on a Windows machine
+- `build_portable_usb.bat` — build script for creating the portable bundle locally
 - `USB_INSTRUCTIONS.md` — deployment and troubleshooting guide for portable installations
-- Automatic Vosk model download during CI build
+- GitHub Actions workflow for automated portable bundle builds
 
 #### Changed
 - None (all existing functionality preserved)
