@@ -7,11 +7,7 @@ Properly handles console window for both development and production builds.
 import sys
 import os
 
-# Use absolute import for PyInstaller compatibility
-try:
-    from voiceperio.main import main
-except ImportError:
-    from .main import main
+from voiceperio.main import main
 
 if __name__ == "__main__":
     try:

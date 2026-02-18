@@ -61,9 +61,10 @@ class ConfigManager:
         if config_path:
             self.config_path = Path(config_path)
         else:
-            appdata = os.getenv('APPDATA')
-            config_file = 'config.json'
-            self.config_path = Path(appdata) / 'VoicePerio' / config_file if appdata else Path(config_file)
+            # Use %APPDATA% if available, otherwise fall back to user home directory.
+            # Never use a relative path — it may point to a read-only USB drive.
+            appdata = os.getenv('APPDATA') or os.path.expanduser('~')
+            self.config_path = Path(appdata) / 'VoicePerio' / 'config.json'
         
         self.config = copy.deepcopy(self.DEFAULT_CONFIG)
         self.load()

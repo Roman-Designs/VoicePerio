@@ -12,6 +12,7 @@ This is the core integration module that orchestrates:
 """
 
 import sys
+import os
 import logging
 import threading
 import time
@@ -270,28 +271,39 @@ class VoicePerioApp:
     
     def _find_vosk_model(self) -> Optional[Path]:
         """Find the Vosk model directory"""
-        # Check multiple possible locations
-        possible_paths = [
-            Path("models/vosk-model-small-en-us"),
-            Path(__file__).parent.parent.parent / "models" / "vosk-model-small-en-us",
-            Path("C:/Program Files/VoicePerio/models/vosk-model-small-en-us"),
-        ]
-        
-        # Also check config for custom path
+        possible_paths = []
+
+        # 1. Config override (highest priority)
         if self.config:
             custom_path = self.config.get("speech.model_path")
             if custom_path:
-                possible_paths.insert(0, Path(custom_path))
-        
+                possible_paths.append(Path(custom_path))
+
+        # 2. Explicit env var set by portable launcher
+        env_path = os.environ.get('VOSK_MODEL_PATH')
+        if env_path:
+            possible_paths.append(Path(env_path))
+
+        # 3. Relative to this file: app/src/voiceperio/main.py
+        #    Go up 4 levels to reach the USB/portable root, then into models/
+        try:
+            usb_root = Path(__file__).resolve().parent.parent.parent.parent
+            possible_paths.append(usb_root / "models" / "vosk-model-small-en-us")
+        except Exception:
+            pass
+
+        # 4. Relative to CWD (works when launched from the portable root via .bat)
+        possible_paths.append(Path("models") / "vosk-model-small-en-us")
+
+        # 5. Standard installed location
+        possible_paths.append(Path("C:/Program Files/VoicePerio/models/vosk-model-small-en-us"))
+
         for path in possible_paths:
-            if path.exists() and (path / "vosk-model-small-en-us/am/final.mdl").exists():
+            if path.exists() and (path / "am" / "final.mdl").exists():
                 logger.info(f"Found Vosk model at {path}")
                 return path
-            elif path.exists() and (path / "am/final.mdl").exists():
-                logger.info(f"Found Vosk model at {path}")
-                return path
-        
-        logger.warning("Vosk model not found in any expected location")
+
+        logger.warning(f"Vosk model not found. Searched: {[str(p) for p in possible_paths]}")
         return None
     
     def _setup_speech_grammar(self) -> None:
@@ -428,8 +440,13 @@ class VoicePerioApp:
             logger.warning("keyboard module not available, hotkeys disabled")
             return True
         except Exception as e:
-            logger.error(f"Failed to setup hotkeys: {e}")
-            return False
+            # On locked-down corporate Windows, low-level keyboard hooks may be denied.
+            # Hotkeys are a convenience feature — the app works fine without them.
+            logger.warning(
+                f"Could not register global hotkeys (may require admin rights on this machine): {e}. "
+                "Use the system tray menu to control VoicePerio instead."
+            )
+            return True  # Non-fatal
     
     def start(self) -> int:
         """
@@ -1113,13 +1130,25 @@ def main() -> int:
     voiceperio_dir.mkdir(parents=True, exist_ok=True)
     log_file = voiceperio_dir / 'voiceperio.log'
     
-    # Setup logging
-    # console_output=False when running as windowed exe (no console window)
+    # Detect whether we have a real console attached (portable .bat launch = yes, windowed .exe = no)
+    import sys as _sys
+    _has_console = False
+    try:
+        if _sys.stdout is not None:
+            _sys.stdout.fileno()
+            _has_console = True
+    except Exception:
+        pass
+
+    # Setup logging — enable console output when running from .bat so errors are visible
     setup_logging(
         log_level=logging.INFO,
         log_file=str(log_file),
-        console_output=False  # Disable console to avoid errors when running without console
+        console_output=_has_console
     )
+
+    if _has_console:
+        print(f"VoicePerio starting... Log file: {log_file}")
     
     logger.info("=" * 60)
     logger.info("VoicePerio - Voice-Controlled Periodontal Charting Assistant")

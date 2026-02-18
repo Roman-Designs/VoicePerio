@@ -60,8 +60,8 @@ REM ============================================================================
 echo.
 echo [2/5] Setting up pip in portable Python...
 
-REM Uncomment the import site line in python310._pth to enable pip/site-packages
-powershell -Command "(Get-Content '%OUTPUT_DIR%\python\python310._pth') -replace '#import site', 'import site' | Set-Content '%OUTPUT_DIR%\python\python310._pth'"
+REM Enable site-packages and add app/src to path in the ._pth file (dynamic filename lookup)
+powershell -Command "$f = (Get-ChildItem '%OUTPUT_DIR%\python' -Filter 'python*._pth' | Select-Object -First 1).FullName; if (-not $f) { Write-Error 'python*._pth not found'; exit 1 }; $c = (Get-Content $f) -replace '#import site','import site'; $c += '../app/src'; $c | Set-Content $f -Encoding UTF8; Write-Host ('Patched ' + $f)"
 
 REM Download get-pip.py
 powershell -Command "Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '%OUTPUT_DIR%\python\get-pip.py'"
@@ -85,7 +85,6 @@ echo [3/5] Installing VoicePerio dependencies (this may take a few minutes)...
     vosk>=0.3.45 ^
     sounddevice>=0.4.6 ^
     pyautogui>=0.9.54 ^
-    pynput>=1.7.6 ^
     PyQt6>=6.5.0 ^
     numpy>=1.24.0 ^
     keyboard>=0.13.5 ^
@@ -97,6 +96,21 @@ echo [3/5] Installing VoicePerio dependencies (this may take a few minutes)...
 if errorlevel 1 (
     echo ERROR: Failed to install some dependencies.
     echo Some packages may require Visual C++ Build Tools.
+    pause
+    exit /b 1
+)
+
+REM Run pywin32 post-install (REQUIRED - without this win32gui/win32api will fail to import)
+echo Running pywin32 post-install...
+if exist "%OUTPUT_DIR%\python\Scripts\pywin32_postinstall.py" (
+    "%OUTPUT_DIR%\python\python.exe" "%OUTPUT_DIR%\python\Scripts\pywin32_postinstall.py" -install
+    if errorlevel 1 (
+        echo ERROR: pywin32 post-install failed.
+        pause
+        exit /b 1
+    )
+) else (
+    echo ERROR: pywin32_postinstall.py not found. pywin32 may not have installed correctly.
     pause
     exit /b 1
 )

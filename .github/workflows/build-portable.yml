@@ -69,6 +69,24 @@ jobs:
             "jsonschema>=4.19.0" `
             "colorlog>=6.7.0"
 
+      - name: Run pywin32 post-install
+        shell: pwsh
+        run: |
+          $pythonExe = "VoicePerio_Portable/python/python.exe"
+          $postInstall = "VoicePerio_Portable/python/Scripts/pywin32_postinstall.py"
+          if (Test-Path $postInstall) {
+            Write-Host "Running pywin32 post-install (required for win32gui/win32api to work)..."
+            & $pythonExe $postInstall -install
+            if ($LASTEXITCODE -ne 0) {
+              Write-Error "pywin32 post-install failed"
+              exit 1
+            }
+            Write-Host "pywin32 post-install complete"
+          } else {
+            Write-Error "pywin32_postinstall.py not found at $postInstall - win32gui will fail to import"
+            exit 1
+          }
+
       - name: Download Vosk speech model
         shell: pwsh
         run: |
@@ -117,7 +135,11 @@ jobs:
           Copy-Item "VoicePerio_Launch.bat" "$outDir/"
           
           # Copy instructions
-          Copy-Item "USB_INSTRUCTIONS.md" "$outDir/"
+          if (Test-Path "USB_INSTRUCTIONS.md") {
+            Copy-Item "USB_INSTRUCTIONS.md" "$outDir/"
+          } else {
+            Write-Warning "USB_INSTRUCTIONS.md not found - skipping"
+          }
 
       - name: Create final zip
         shell: pwsh
