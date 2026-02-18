@@ -64,7 +64,7 @@ echo.
 
 REM Launch VoicePerio
 REM Embedded Python ignores PYTHONPATH, so we inject the src path via sys.path at runtime
-"%PYTHON_EXE%" -c "import sys; sys.path.insert(0, '%APP_DIR%\src'); import runpy; runpy.run_module('voiceperio', run_name='__main__', alter_sys=True)"
+"%PYTHON_EXE%" -c "import sys; sys.path.insert(0, r'%APP_DIR%\src'); import runpy; runpy.run_module('voiceperio', run_name='__main__', alter_sys=True)"
 
 if errorlevel 1 (
     echo.
