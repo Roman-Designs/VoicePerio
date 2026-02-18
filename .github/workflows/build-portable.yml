@@ -30,10 +30,14 @@ jobs:
           Remove-Item "python_embed.zip"
           
           # Enable site-packages by uncommenting 'import site' in ._pth file
+          # Also add the app/src path so 'voiceperio' package is found without PYTHONPATH
           $pthFile = Get-ChildItem "$outDir/python" -Filter "python*._pth" | Select-Object -First 1
           if ($pthFile) {
-            (Get-Content $pthFile.FullName) -replace '#import site', 'import site' | Set-Content $pthFile.FullName
-            Write-Host "Enabled site-packages in $($pthFile.Name)"
+            $content = (Get-Content $pthFile.FullName) -replace '#import site', 'import site'
+            # Add relative path to app/src so the voiceperio package is always discoverable
+            $content += "../app/src"
+            Set-Content $pthFile.FullName $content
+            Write-Host "Enabled site-packages and added app/src in $($pthFile.Name)"
           }
 
       - name: Install pip in portable Python

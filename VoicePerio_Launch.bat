@@ -56,9 +56,6 @@ if not exist "%MODEL_DIR%\vosk-model-small-en-us" (
 REM Set environment variables so VoicePerio can find the model
 set "VOSK_MODEL_PATH=%MODEL_DIR%\vosk-model-small-en-us"
 
-REM Add the app source to Python path
-set "PYTHONPATH=%APP_DIR%\src;%PYTHONPATH%"
-
 echo ============================================================================
 echo  Starting VoicePerio...
 echo  (This window will stay open for diagnostics. Do not close it.)
@@ -66,7 +63,8 @@ echo ===========================================================================
 echo.
 
 REM Launch VoicePerio
-"%PYTHON_EXE%" -m voiceperio
+REM Embedded Python ignores PYTHONPATH, so we inject the src path via sys.path at runtime
+"%PYTHON_EXE%" -c "import sys; sys.path.insert(0, '%APP_DIR%\src'); import runpy; runpy.run_module('voiceperio', run_name='__main__', alter_sys=True)"
 
 if errorlevel 1 (
     echo.
