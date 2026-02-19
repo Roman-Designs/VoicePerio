@@ -70,9 +70,7 @@ class TestCommandParserBasics(unittest.TestCase):
         expected_numbers = [
             ('zero', 0), ('oh', 0), ('one', 1), ('two', 2),
             ('three', 3), ('four', 4), ('five', 5), ('six', 6),
-            ('seven', 7), ('eight', 8), ('nine', 9), ('ten', 10),
-            ('eleven', 11), ('twelve', 12), ('thirteen', 13),
-            ('fourteen', 14), ('fifteen', 15)
+            ('seven', 7), ('eight', 8), ('nine', 9)
         ]
         
         for word, expected_num in expected_numbers:
@@ -114,11 +112,10 @@ class TestSingleNumbers(unittest.TestCase):
         self.assertIsNotNone(cmd)
         self.assertEqual(cmd.params['numbers'], [4])
     
-    def test_parse_single_fifteen(self) -> None:
-        """Test parsing single fifteen"""
-        cmd = self.parser.parse('fifteen')
-        self.assertIsNotNone(cmd)
-        self.assertEqual(cmd.params['numbers'], [15])
+    def test_parse_single_ten_not_supported(self) -> None:
+        """Test parsing ten is not supported"""
+        cmd = self.parser.parse('ten')
+        self.assertIsNone(cmd)
     
     def test_parse_uppercase_number(self) -> None:
         """Test parsing uppercase number (case-insensitive)"""
@@ -174,11 +171,10 @@ class TestNumberSequences(unittest.TestCase):
         self.assertIsNotNone(cmd)
         self.assertEqual(cmd.params['numbers'], [1, 1, 1, 1, 1, 1])
     
-    def test_parse_mixed_single_and_double_digit(self) -> None:
-        """Test parsing sequence with double-digit numbers"""
-        cmd = self.parser.parse('fifteen ten five')
-        self.assertIsNotNone(cmd)
-        self.assertEqual(cmd.params['numbers'], [15, 10, 5])
+    def test_parse_sequence_with_double_digit_words_not_supported(self) -> None:
+        """Test parsing rejects sequences with words above nine"""
+        cmd = self.parser.parse('five ten six')
+        self.assertIsNone(cmd)
     
     def test_parse_number_sequence_with_extra_spaces(self) -> None:
         """Test parsing with extra spaces"""
@@ -247,10 +243,10 @@ class TestExtractNumbers(unittest.TestCase):
         self.assertEqual(numbers_zero, [0])
         self.assertEqual(numbers_oh, [0])
     
-    def test_extract_with_double_digits(self) -> None:
-        """Test extracting double-digit numbers"""
+    def test_extract_with_double_digit_words(self) -> None:
+        """Test extracting ignores unsupported words above nine"""
         numbers = self.parser.extract_numbers('ten eleven twelve')
-        self.assertEqual(numbers, [10, 11, 12])
+        self.assertEqual(numbers, [])
     
     def test_extract_empty_string(self) -> None:
         """Test extracting from empty string"""

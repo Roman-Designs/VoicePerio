@@ -113,7 +113,7 @@ class CommandParser:
             threshold: Match score threshold (0-100), default 75
             
         Returns:
-            Matched number value (0-15) or None if no good match
+            Matched number value (0-9) or None if no good match
         """
         text = text.lower().strip()
         
@@ -186,9 +186,6 @@ class CommandParser:
             'fiv': ['five', 'fife'],
             'seven': ['sevun', 'sev\'n'],
             'sevun': ['seven'],
-            'zen': ['ten'],
-            'ten': ['zen'],
-            'teen': ['ten'],
         }
         
         # Check if there's a known phonetic relationship

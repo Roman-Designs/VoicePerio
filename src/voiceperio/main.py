@@ -32,6 +32,7 @@ from .command_parser import CommandParser, Command
 from .number_grouper import NumberGrouper, ParsedCommand, NumberGroup
 from .number_sequencer import NumberSequencer
 from .action_executor import ActionExecutor
+from .audio_feedback import AudioFeedbackManager
 from .gui.gui_manager import GUIManager
 from .utils.logger import setup_logging, get_logger
 
@@ -113,6 +114,7 @@ class VoicePerioApp:
         self.number_grouper: Optional[NumberGrouper] = None
         self.number_sequencer: Optional[NumberSequencer] = None
         self.action_executor: Optional[ActionExecutor] = None
+        self.audio_feedback: Optional[AudioFeedbackManager] = None
         self.gui_manager: Optional[GUIManager] = None
         
         # Application state
@@ -184,12 +186,16 @@ class VoicePerioApp:
             # Step 5: Initialize action executor
             if not self._setup_action_executor():
                 return False
+
+            # Step 6: Initialize audio feedback
+            if not self._setup_audio_feedback():
+                return False
             
-            # Step 6: Initialize command parser
+            # Step 7: Initialize command parser
             if not self._setup_command_parser():
                 return False
             
-            # Step 7: Register global hotkeys
+            # Step 8: Register global hotkeys
             if not self._setup_hotkeys():
                 return False
             
@@ -313,7 +319,7 @@ class VoicePerioApp:
             vocabulary = [
                 # Numbers
                 "zero", "one", "two", "three", "four", "five", "six", "seven", 
-                "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "oh",
+                "eight", "nine", "oh",
                 # Indicators
                 "bleeding", "bleed", "bop", "suppuration", "pus", "plaque", "calculus", 
                 "tartar", "furcation", "furca", "mobility", "mobile", "recession",
@@ -405,6 +411,29 @@ class VoicePerioApp:
         
         except Exception as e:
             logger.error(f"Failed to setup command parser: {e}")
+            return False
+
+    def _setup_audio_feedback(self) -> bool:
+        """Set up optional audio feedback after successful Dentrix entry."""
+        try:
+            mode = self.config.get("behavior.audio_feedback_mode", "off") if self.config else "off"
+            readback_rate = self.config.get("behavior.readback_rate", 3) if self.config else 3
+            readback_max_chars = self.config.get("behavior.readback_max_chars", 32) if self.config else 32
+
+            self.audio_feedback = AudioFeedbackManager(
+                mode=mode,
+                readback_rate=readback_rate,
+                readback_max_chars=readback_max_chars,
+            )
+
+            logger.info(
+                "Audio feedback initialized: "
+                f"mode={mode}, readback_rate={readback_rate}, readback_max_chars={readback_max_chars}"
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to setup audio feedback: {e}")
             return False
     
     def _setup_hotkeys(self) -> bool:
@@ -668,6 +697,10 @@ class VoicePerioApp:
             # Save configuration
             if self.config:
                 self.config.save()
+
+            # Stop feedback worker
+            if self.audio_feedback:
+                self.audio_feedback.shutdown()
             
             logger.info("Shutdown completed successfully")
         
@@ -731,19 +764,27 @@ class VoicePerioApp:
                 return
             
             # Use number grouper to parse the recognition result
+            feedback_text = None
             if self.number_grouper:
                 parsed = self.number_grouper.parse_recognition(result)
                 success = self._execute_parsed_command(parsed)
+                if success:
+                    feedback_text = self._feedback_text_for_parsed_command(parsed)
             else:
                 # Fallback to old command parser
                 if self.command_parser:
                     command = self.command_parser.parse(result.text)
                     if command:
                         success = self._execute_command(command)
+                        if success:
+                            feedback_text = self._feedback_text_for_legacy_command(command)
                     else:
                         success = False
                 else:
                     success = False
+
+            if success and feedback_text and self.audio_feedback:
+                self.audio_feedback.play_success(feedback_text)
             
             # Show feedback
             if self.gui_manager:
@@ -986,6 +1027,47 @@ class VoicePerioApp:
             return True
         
         return False
+
+    def _feedback_text_for_parsed_command(self, parsed: ParsedCommand) -> Optional[str]:
+        """Create concise readback text for timing-based parser commands."""
+        if not parsed:
+            return None
+
+        if parsed.command_type == "numbers":
+            groups = [self._digits_for_readback(group.digits) for group in (parsed.number_groups or [])]
+            groups = [g for g in groups if g]
+            return ", ".join(groups) if groups else None
+
+        if parsed.command_type == "skip":
+            return "0 0 0"
+
+        if parsed.command_type == "indicator":
+            indicator = parsed.params.get("indicator", "") if parsed.params else ""
+            return indicator.replace("_", " ") if indicator else None
+
+        return None
+
+    def _feedback_text_for_legacy_command(self, command: Command) -> Optional[str]:
+        """Create concise readback text for legacy parser commands."""
+        if not command:
+            return None
+
+        if command.action in ("number_sequence", "single_number"):
+            numbers = command.params.get("numbers", [])
+            if not numbers:
+                return None
+            return " ".join(str(num) for num in numbers)
+
+        if command.action == "indicator":
+            indicator = command.params.get("indicator", "")
+            return indicator.replace("_", " ") if indicator else None
+
+        return None
+
+    @staticmethod
+    def _digits_for_readback(digits: str) -> str:
+        """Format compact digits for quick speech readback."""
+        return " ".join(ch for ch in (digits or "") if ch.isdigit())
     
     def _set_state(self, new_state: AppState) -> None:
         """Set application state and emit signal"""
@@ -1054,6 +1136,13 @@ class VoicePerioApp:
         # Update target window
         if "window_title" in settings and self.action_executor:
             self.action_executor.find_target_window(settings["window_title"])
+
+        if self.audio_feedback:
+            self.audio_feedback.update_settings(
+                mode=settings.get("audio_feedback_mode"),
+                readback_rate=settings.get("readback_rate"),
+                readback_max_chars=settings.get("readback_max_chars"),
+            )
     
     def _on_listening_toggled(self, is_listening: bool) -> None:
         """Handle listening toggle from GUI"""

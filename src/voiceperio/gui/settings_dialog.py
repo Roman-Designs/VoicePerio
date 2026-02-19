@@ -166,9 +166,37 @@ class SettingsDialog(QDialog):
         self.auto_advance_check = QCheckBox("Auto-advance to next tooth")
         self.auto_advance_check.setChecked(False)
         layout.addRow(self.auto_advance_check)
-        
+
+        # Audio feedback mode
+        self.feedback_mode_combo = QComboBox()
+        self.feedback_mode_combo.addItem("Off", "off")
+        self.feedback_mode_combo.addItem("Chime", "chime")
+        self.feedback_mode_combo.addItem("Readback", "readback")
+        self.feedback_mode_combo.currentIndexChanged.connect(lambda _: self._update_feedback_controls())
+        layout.addRow("Audio Feedback:", self.feedback_mode_combo)
+
+        # Readback speech rate
+        self.readback_rate_spinbox = QSpinBox()
+        self.readback_rate_spinbox.setMinimum(-5)
+        self.readback_rate_spinbox.setMaximum(8)
+        self.readback_rate_spinbox.setValue(3)
+        layout.addRow("Readback Speed:", self.readback_rate_spinbox)
+
+        # Readback max chars
+        self.readback_max_chars_spinbox = QSpinBox()
+        self.readback_max_chars_spinbox.setMinimum(8)
+        self.readback_max_chars_spinbox.setMaximum(80)
+        self.readback_max_chars_spinbox.setValue(32)
+        layout.addRow("Readback Max Chars:", self.readback_max_chars_spinbox)
+
         group.setLayout(layout)
         return group
+
+    def _update_feedback_controls(self) -> None:
+        """Enable readback controls only when readback mode is selected."""
+        is_readback = self.feedback_mode_combo.currentData() == "readback"
+        self.readback_rate_spinbox.setEnabled(is_readback)
+        self.readback_max_chars_spinbox.setEnabled(is_readback)
     
     def _create_target_tab(self) -> QGroupBox:
         """Create target window settings tab"""
@@ -289,6 +317,12 @@ class SettingsDialog(QDialog):
             self.tab_after_check.setChecked(self.config.get("behavior.tab_after_sequence", True))
             self.keystroke_slider.setValue(self.config.get("behavior.keystroke_delay_ms", 50))
             self.auto_advance_check.setChecked(self.config.get("behavior.auto_advance_tooth", False))
+            feedback_mode = self.config.get("behavior.audio_feedback_mode", "off")
+            mode_index = self.feedback_mode_combo.findData(feedback_mode)
+            self.feedback_mode_combo.setCurrentIndex(mode_index if mode_index >= 0 else 0)
+            self.readback_rate_spinbox.setValue(self.config.get("behavior.readback_rate", 3))
+            self.readback_max_chars_spinbox.setValue(self.config.get("behavior.readback_max_chars", 32))
+            self._update_feedback_controls()
             
             # Target settings
             self.window_title_edit.setText(self.config.get("target.window_title", "Dentrix"))
@@ -327,6 +361,9 @@ class SettingsDialog(QDialog):
             self.config.set("behavior.tab_after_sequence", self.tab_after_check.isChecked())
             self.config.set("behavior.keystroke_delay_ms", self.keystroke_slider.value())
             self.config.set("behavior.auto_advance_tooth", self.auto_advance_check.isChecked())
+            self.config.set("behavior.audio_feedback_mode", self.feedback_mode_combo.currentData())
+            self.config.set("behavior.readback_rate", self.readback_rate_spinbox.value())
+            self.config.set("behavior.readback_max_chars", self.readback_max_chars_spinbox.value())
             
             # Target settings
             self.config.set("target.window_title", self.window_title_edit.text())
@@ -344,6 +381,9 @@ class SettingsDialog(QDialog):
             settings = {
                 "tab_after_sequence": self.tab_after_check.isChecked(),
                 "keystroke_delay_ms": self.keystroke_slider.value(),
+                "audio_feedback_mode": self.feedback_mode_combo.currentData(),
+                "readback_rate": self.readback_rate_spinbox.value(),
+                "readback_max_chars": self.readback_max_chars_spinbox.value(),
                 "show_floating_indicator": self.show_indicator_check.isChecked(),
                 "indicator_opacity": self.opacity_slider.value() / 100.0,
                 "window_title": self.window_title_edit.text(),

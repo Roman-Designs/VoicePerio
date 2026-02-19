@@ -37,12 +37,6 @@ WORD_TO_DIGIT: Dict[str, str] = {
     "seven": "7",
     "eight": "8",
     "nine": "9",
-    "ten": "10",
-    "eleven": "11",
-    "twelve": "12",
-    "thirteen": "13",
-    "fourteen": "14",
-    "fifteen": "15",
 }
 
 
@@ -162,8 +156,6 @@ class NumberGrouper:
             'fife': ['five'],
             'five': ['fife', 'fiv'],
             'fiv': ['five', 'fife'],
-            'zen': ['ten'],
-            'ten': ['zen'],
         }
         
         logger.info(f"NumberGrouper initialized: threshold={pause_threshold_ms}ms")

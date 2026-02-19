@@ -4,16 +4,15 @@ Manages the typing of number sequences with proper delays and field advancement.
 
 Updated for Dentrix Enterprise workflow:
 - Each NumberGroup is typed into a single field (e.g., "232" -> types "232")
-- After typing, press Enter to advance to next field
+- Dentrix auto-advances after numeric entry, so no post-entry Enter/Tab is sent
 - Supports skip (enter zeros), skip with count (advance N fields)
 - Uses Dentrix keyboard shortcuts for navigation
 
 Key Dentrix Enterprise shortcuts used:
-- Enter: Advance to next field
+- Enter/Page Down: Explicit navigation when requested
 - Page Up: Previous field  
 - Page Down: Next field
 - Home: Go to first position
-- Minus (-) + digit: Enter 10+ values (e.g., -0 = 10, -1 = 11)
 - Ctrl+S: Save
 """
 
@@ -36,20 +35,20 @@ class NumberSequencer:
     1. Receive list of NumberGroup objects (from NumberGrouper)
     2. For each group:
        a. Type the digits (e.g., "232")
-       b. Press Enter to advance to next field
+       b. Wait briefly for Dentrix auto-advance timing
     
     This replaces the old workflow where Tab was pressed between individual digits.
     Now, each NumberGroup represents ONE field entry, regardless of digit count.
     
     Example: "2, 232, 43, 3" spoken -> 4 field entries:
-    - Field 1: "2" + Enter
-    - Field 2: "232" + Enter
-    - Field 3: "43" + Enter
-    - Field 4: "3" + Enter
+    - Field 1: "2"
+    - Field 2: "232"
+    - Field 3: "43"
+    - Field 4: "3"
     
     Config:
     - inter_entry_delay_ms: Delay between field entries (default: 50ms)
-    - advance_key: Key to press after each entry (default: "enter")
+    - advance_key: Key used for explicit navigation commands (default: "enter")
     """
     
     def __init__(
@@ -62,7 +61,7 @@ class NumberSequencer:
         
         Args:
             inter_entry_delay_ms: Delay between field entries in milliseconds
-            advance_key: Key to press after each entry (enter, tab, etc.)
+            advance_key: Key for explicit navigation (enter, tab, etc.)
         """
         self.inter_entry_delay_ms = inter_entry_delay_ms
         self.advance_key = advance_key
@@ -79,7 +78,7 @@ class NumberSequencer:
         Enter a list of NumberGroups, each as a separate field entry.
         
         This is the new primary method for entering pocket depth data.
-        Each NumberGroup is typed into one field, then Enter advances to next.
+        Each NumberGroup is typed into one field and Dentrix advances automatically.
         
         Args:
             groups: List of NumberGroup objects from NumberGrouper
@@ -98,13 +97,11 @@ class NumberSequencer:
         try:
             for i, group in enumerate(groups):
                 # Type the digit string (e.g., "232", "43", "3")
-                self.action_executor.type_text(group.digits)
+                if not self.action_executor.type_text(group.digits):
+                    return False
                 
-                # Small delay before advancing
+                # Keep pacing delay to preserve stability in Dentrix input handling
                 time.sleep(self.inter_entry_delay_ms / 1000.0)
-                
-                # Press advance key to move to next field
-                self.action_executor.send_keystroke(self.advance_key)
                 
                 logger.debug(f"Entered group {i+1}/{len(groups)}: '{group.digits}'")
             
@@ -117,7 +114,7 @@ class NumberSequencer:
     
     def enter_single_value(self, value: str) -> bool:
         """
-        Enter a single value and advance to next field.
+        Enter a single value.
         
         Args:
             value: The digit string to enter
@@ -130,9 +127,9 @@ class NumberSequencer:
             return False
         
         try:
-            self.action_executor.type_text(value)
+            if not self.action_executor.type_text(value):
+                return False
             time.sleep(self.inter_entry_delay_ms / 1000.0)
-            self.action_executor.send_keystroke(self.advance_key)
             
             logger.debug(f"Entered single value: '{value}'")
             return True
@@ -143,10 +140,10 @@ class NumberSequencer:
     
     def skip_with_zeros(self) -> bool:
         """
-        Skip current field by entering "000" and advancing.
+        Skip current field by entering "000".
         
         This is the "skip" command behavior - enters three zeros
-        as a placeholder and moves to next field.
+        as a placeholder. Dentrix auto-advances after the numeric entry.
         
         Returns:
             True if successful
@@ -157,9 +154,9 @@ class NumberSequencer:
         
         try:
             # Enter three zeros
-            self.action_executor.type_text("000")
+            if not self.action_executor.type_text("000"):
+                return False
             time.sleep(self.inter_entry_delay_ms / 1000.0)
-            self.action_executor.send_keystroke(self.advance_key)
             
             logger.info("Skipped field with zeros")
             return True
@@ -228,15 +225,15 @@ class NumberSequencer:
     # Legacy method for backward compatibility
     def sequence_numbers(self, numbers: List[int]) -> bool:
         """
-        Legacy method: Type a sequence of numbers with Tab between each.
+        Legacy method: Type a sequence of numbers as separate entries.
         
         DEPRECATED: Use enter_number_groups() instead for timing-based grouping.
         
-        This method is kept for backward compatibility but treats each number
-        as a separate field entry (old behavior).
+        This method is kept for backward compatibility and still applies
+        inter-entry pacing, but does not send post-entry Enter/Tab.
         
         Args:
-            numbers: List of numbers to type (0-15)
+            numbers: List of numbers to type (0-9)
             
         Returns:
             True if sequence entered successfully
@@ -246,16 +243,14 @@ class NumberSequencer:
             return False
         
         try:
-            for i, num in enumerate(numbers):
+            for num in numbers:
                 # Type the number
-                self.action_executor.type_text(str(num))
+                if not self.action_executor.type_text(str(num)):
+                    return False
                 
                 # Small delay
                 time.sleep(self.inter_entry_delay_ms / 1000.0)
                 
-                # Press advance key after each number
-                self.action_executor.send_keystroke(self.advance_key)
-            
             logger.info(f"Successfully entered number sequence (legacy): {numbers}")
             return True
         

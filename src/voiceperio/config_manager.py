@@ -35,7 +35,10 @@ class ConfigManager:
         "behavior": {
             "tab_after_sequence": True,
             "keystroke_delay_ms": 50,
-            "auto_advance_tooth": False
+            "auto_advance_tooth": False,
+            "audio_feedback_mode": "off",
+            "readback_rate": 3,
+            "readback_max_chars": 32
         },
         "target": {
             "window_title": "Dentrix",

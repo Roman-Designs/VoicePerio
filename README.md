@@ -76,8 +76,8 @@ VoicePerio is a **standalone overlay application** that:
 
 ### Core Features
 
-- **Pocket Depth Entry**: Dictate numbers 0-15, entered with automatic Tab between fields
-- **Sequence Entry**: Say "three two three" → enters 3, Tab, 2, Tab, 3
+- **Pocket Depth Entry**: Dictate numbers 0-9, entered directly into Dentrix fields
+- **Sequence Entry**: Say "three two three" → enters 323 in the current field
 - **Perio Indicators**: Bleeding, suppuration, furcation (I/II/III), mobility (I/II/III), recession
 - **Navigation**: Next tooth, previous tooth, quadrant jumps
 - **Side Switching**: Facial/buccal, lingual/palatal
@@ -87,7 +87,7 @@ VoicePerio is a **standalone overlay application** that:
 - System tray icon (minimize out of the way)
 - Small floating indicator showing listening status
 - Visual feedback when commands are recognized
-- Audio feedback (optional beep on recognition)
+- Optional audio feedback after successful Dentrix data entry (off/chime/readback)
 
 ---
 
@@ -111,7 +111,7 @@ VoicePerio uses **timing-based grouping** to intelligently interpret your spoken
 - A pause > 300ms indicates a NEW field entry
 - After each entry, the cursor automatically advances to the next field
 
-### Pocket Depths (0-15)
+### Pocket Depths (0-9)
 
 | Say | Enters |
 |-----|--------|
@@ -120,7 +120,6 @@ VoicePerio uses **timing-based grouping** to intelligently interpret your spoken
 | "two" | 2 |
 | "three" | 3 |
 | ... | ... |
-| "fifteen" | 15 |
 
 ### Number Combinations
 
@@ -597,7 +596,10 @@ VoicePerio runs entirely in the background with a refined GUI interface:
   "behavior": {
     "tab_after_sequence": true,
     "keystroke_delay_ms": 50,
-    "auto_advance_tooth": false
+    "auto_advance_tooth": false,
+    "audio_feedback_mode": "off",
+    "readback_rate": 3,
+    "readback_max_chars": 32
   },
   "target": {
     "window_title": "Dentrix",
@@ -613,6 +615,11 @@ VoicePerio runs entirely in the background with a refined GUI interface:
   }
 }
 ```
+
+`behavior.audio_feedback_mode` values:
+- `off`: no audio feedback
+- `chime`: short success ding after entered data
+- `readback`: speaks concise entered values asynchronously (uses `readback_rate` and `readback_max_chars`)
 
 ### Customizing for Your Software
 
