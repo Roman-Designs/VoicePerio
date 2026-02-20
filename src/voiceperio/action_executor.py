@@ -8,7 +8,8 @@ Features:
 - Type text and number sequences
 - Special keystroke mapping (Tab, Enter, Shift, Ctrl, etc.)
 - Configurable keystroke delays
-- Type validation for perio numbers (0-15)
+- Type validation for perio numbers (0-19)
+- Dentrix numpad minus protocol for depths 10–19
 - Get target window information
 - Check if target window is focused
 - Comprehensive error handling and logging
@@ -38,7 +39,8 @@ class ActionExecutor:
     - Focus and activate target windows
     - Send individual keystrokes and key combinations
     - Type text and number sequences with proper delays
-    - Validate perio numbers (0-15 range)
+    - Validate perio numbers (0-19 range)
+    - Dentrix numpad minus protocol for depths 10–19
     - Get detailed target window information
     - Check if target window is focused
     - Handle special keys (Tab, Enter, Shift, Ctrl, etc.)
@@ -118,6 +120,13 @@ class ActionExecutor:
         '~': 'shift+grave',
     }
     
+    # Numpad key names for pyautogui (used by type_perio_number)
+    NUMPAD_DIGIT_KEYS: Dict[str, str] = {
+        '0': 'num0', '1': 'num1', '2': 'num2', '3': 'num3', '4': 'num4',
+        '5': 'num5', '6': 'num6', '7': 'num7', '8': 'num8', '9': 'num9',
+    }
+    NUMPAD_MINUS_KEY: str = 'subtract'  # Numpad minus / subtract key
+
     def __init__(
         self,
         target_window_title: Optional[str] = None,
@@ -405,16 +414,19 @@ class ActionExecutor:
     
     def type_number(self, number: int) -> bool:
         """
-        Type a single number (0-15) for periodontal charting.
+        Type a single number (0-19) for periodontal charting.
+
+        For values 0–9 this delegates to type_perio_number (numpad digit).
+        For values 10–19 this delegates to type_perio_number (numpad minus protocol).
         
         Args:
-            number: Number to type (should be 0-15)
+            number: Number to type (should be 0-19)
             
         Returns:
             True if successful, False otherwise
             
         Raises:
-            ValueError: If number is not in valid range (0-15)
+            ValueError: If number is not in valid range (0-19)
             
         Example:
             >>> executor.type_number(3)
@@ -424,20 +436,74 @@ class ActionExecutor:
             logger.error(f"Number must be integer, got: {type(number)}")
             return False
         
-        if number < 0 or number > 15:
-            logger.error(f"Number must be 0-15 for perio charting, got: {number}")
+        if number < 0 or number > 19:
+            logger.error(f"Number must be 0-19 for perio charting, got: {number}")
             return False
         
         try:
-            text = str(number)
-            self.type_text(text)
+            result = self.type_perio_number(str(number))
             logger.debug(f"Typed perio number: {number}")
-            return True
+            return result
         
         except Exception as e:
             logger.error(f"Error typing number {number}: {e}")
             return False
     
+    def type_perio_number(self, digits: str) -> bool:
+        """
+        Type a perio measurement value using the Dentrix numpad protocol.
+
+        Dentrix Enterprise requires numpad keys for pocket-depth entry:
+        - Single digits (0–9): sends the corresponding numpad digit key.
+        - Double digits (10–19): sends numpad minus ('subtract') then the
+          numpad key for the units digit, per the official Dentrix shortcut:
+          https://blog.dentrixenterprise.com/perio-chart-shortcut-keys/
+        - Multi-digit sequences (e.g. "232", "43"): falls back to type_text()
+          for sequential character entry (Dentrix accepts these as individual
+          digit keypresses in sequence).
+
+        Args:
+            digits: Digit string to enter (e.g. "3", "12", "232")
+
+        Returns:
+            True if successful, False otherwise
+
+        Example:
+            >>> executor.type_perio_number("3")   # numpad 3
+            >>> executor.type_perio_number("12")  # numpad minus, numpad 2
+            >>> executor.type_perio_number("232") # falls back to type_text
+        """
+        if not digits:
+            logger.debug("type_perio_number: empty digits, nothing to type")
+            return True
+
+        try:
+            if len(digits) == 1 and digits in self.NUMPAD_DIGIT_KEYS:
+                # Single digit — send the numpad digit key directly.
+                key = self.NUMPAD_DIGIT_KEYS[digits]
+                pyautogui.press(key)
+                logger.debug(f"type_perio_number: single digit '{digits}' -> pressed '{key}'")
+                return True
+
+            if len(digits) == 2 and digits[0] == '1' and digits[1] in self.NUMPAD_DIGIT_KEYS:
+                # Double digit 10–19 — numpad minus then numpad units digit.
+                units_key = self.NUMPAD_DIGIT_KEYS[digits[1]]
+                pyautogui.press(self.NUMPAD_MINUS_KEY)
+                pyautogui.press(units_key)
+                logger.debug(
+                    f"type_perio_number: double digit '{digits}' -> "
+                    f"pressed '{self.NUMPAD_MINUS_KEY}' then '{units_key}'"
+                )
+                return True
+
+            # Fallback: multi-digit sequence or unrecognised format — use type_text.
+            logger.debug(f"type_perio_number: multi-digit '{digits}' -> falling back to type_text")
+            return self.type_text(digits)
+
+        except Exception as e:
+            logger.error(f"Error in type_perio_number('{digits}'): {e}")
+            return False
+
     # ==================== NUMBER SEQUENCES ====================
     
     def type_number_sequence(
@@ -453,7 +519,7 @@ class ActionExecutor:
         For example, typing [3, 2, 3] will enter "3 [Tab] 2 [Tab] 3".
         
         Args:
-            numbers: List of numbers to type (0-15)
+            numbers: List of numbers to type (0-19)
             separator: Key to press between numbers (default: 'tab')
             final_separator: Whether to press separator after last number
             
@@ -461,7 +527,7 @@ class ActionExecutor:
             True if successful, False otherwise
             
         Raises:
-            ValueError: If any number is not 0-15
+            ValueError: If any number is not 0-19
             
         Example:
             >>> executor.type_number_sequence([3, 2, 3])  # 3 [Tab] 2 [Tab] 3
@@ -476,8 +542,8 @@ class ActionExecutor:
             for num in numbers:
                 if not isinstance(num, int):
                     raise ValueError(f"All numbers must be integers, got: {type(num)}")
-                if num < 0 or num > 15:
-                    raise ValueError(f"Number must be 0-15, got: {num}")
+                if num < 0 or num > 19:
+                    raise ValueError(f"Number must be 0-19, got: {num}")
             
             # Type each number with separator
             for i, num in enumerate(numbers):

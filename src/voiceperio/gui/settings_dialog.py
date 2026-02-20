@@ -170,8 +170,10 @@ class SettingsDialog(QDialog):
         # Audio feedback mode
         self.feedback_mode_combo = QComboBox()
         self.feedback_mode_combo.addItem("Off", "off")
-        self.feedback_mode_combo.addItem("Chime", "chime")
-        self.feedback_mode_combo.addItem("Readback", "readback")
+        self.feedback_mode_combo.addItem("Click  (40ms)", "click")
+        self.feedback_mode_combo.addItem("Beep  (140ms)", "beep")
+        self.feedback_mode_combo.addItem("Chime  (260ms)", "chime")
+        self.feedback_mode_combo.addItem("Readback (spoken)", "readback")
         self.feedback_mode_combo.currentIndexChanged.connect(lambda _: self._update_feedback_controls())
         layout.addRow("Audio Feedback:", self.feedback_mode_combo)
 

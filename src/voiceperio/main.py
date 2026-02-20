@@ -317,9 +317,12 @@ class VoicePerioApp:
         try:
             # Build vocabulary from commands
             vocabulary = [
-                # Numbers
+                # Numbers — single digits
                 "zero", "one", "two", "three", "four", "five", "six", "seven", 
                 "eight", "nine", "oh",
+                # Numbers — double digits (10–19, Dentrix numpad minus protocol)
+                "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen",
+                "sixteen", "seventeen", "eighteen", "nineteen",
                 # Indicators
                 "bleeding", "bleed", "bop", "suppuration", "pus", "plaque", "calculus", 
                 "tartar", "furcation", "furca", "mobility", "mobile", "recession",
@@ -327,7 +330,7 @@ class VoicePerioApp:
                 "next", "previous", "back", "skip", "missing", "upper", "lower", 
                 "left", "right", "facial", "buccal", "lingual", "palatal", "quadrant",
                 # Actions
-                "enter", "okay", "cancel", "escape", "save", "undo", "correction", "scratch",
+                "enter", "okay", "cancel", "escape", "save", "undo", "correction", "scratch", "clear",
                 # App control
                 "wake", "sleep", "pause", "stop", "exit", "voice", "perio",
             ]
@@ -383,7 +386,11 @@ class VoicePerioApp:
                 pause_threshold_ms=pause_threshold
             )
             
-            # Setup number sequencer (for field entry)
+            # Setup number sequencer (for field entry).
+            # Note: advance_key is only used by NumberSequencer.skip_fields() to follow
+            # Dentrix's navigation script path (Enter).  go_next() always sends Page Down
+            # (the Dentrix keyboard shortcut for the explicit Next button) regardless of
+            # this setting, so changing advance_key does NOT affect the "next" voice command.
             advance_key = self.config.get("behavior.advance_key", "enter") if self.config else "enter"
             self.number_sequencer = NumberSequencer(
                 inter_entry_delay_ms=keystroke_delay,
@@ -866,6 +873,12 @@ class VoicePerioApp:
                 # Save the exam
                 if self.number_sequencer:
                     return self.number_sequencer.save()
+                return False
+            
+            elif cmd_type == "clear":
+                # Clear current selection (Delete key in Dentrix)
+                if self.action_executor:
+                    return self.action_executor.send_keystroke("delete")
                 return False
             
             elif cmd_type == "indicator":

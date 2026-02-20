@@ -7,11 +7,12 @@ Updated for Dentrix Enterprise workflow:
 - Dentrix auto-advances after numeric entry, so no post-entry Enter/Tab is sent
 - Supports skip (enter zeros), skip with count (advance N fields)
 - Uses Dentrix keyboard shortcuts for navigation
+- Double-digit depths (10–19) use the numpad minus protocol via type_perio_number
 
 Key Dentrix Enterprise shortcuts used:
-- Enter/Page Down: Explicit navigation when requested
-- Page Up: Previous field  
-- Page Down: Next field
+- Page Down: Next field (explicit navigation)
+- Page Up: Previous field (explicit navigation)
+- Enter: Script-path advancement (used by skip_fields)
 - Home: Go to first position
 - Ctrl+S: Save
 """
@@ -48,7 +49,9 @@ class NumberSequencer:
     
     Config:
     - inter_entry_delay_ms: Delay between field entries (default: 50ms)
-    - advance_key: Key used for explicit navigation commands (default: "enter")
+    - advance_key: Key used by skip_fields() to advance along the script path
+                   (default: "enter"). NOT used by go_next(), which always sends
+                   Page Down per Dentrix keyboard shortcuts.
     """
     
     def __init__(
@@ -61,7 +64,9 @@ class NumberSequencer:
         
         Args:
             inter_entry_delay_ms: Delay between field entries in milliseconds
-            advance_key: Key for explicit navigation (enter, tab, etc.)
+            advance_key: Key for script-path advancement used by skip_fields()
+                         (enter follows Dentrix's navigation script). go_next()
+                         always uses Page Down regardless of this setting.
         """
         self.inter_entry_delay_ms = inter_entry_delay_ms
         self.advance_key = advance_key
@@ -96,8 +101,11 @@ class NumberSequencer:
         
         try:
             for i, group in enumerate(groups):
-                # Type the digit string (e.g., "232", "43", "3")
-                if not self.action_executor.type_text(group.digits):
+                # Use type_perio_number so that:
+                #   - Single digits (0–9) are sent as numpad digit keys.
+                #   - Double digits (10–19) use the Dentrix numpad minus protocol.
+                #   - Multi-digit sequences (e.g. "232") fall back to type_text.
+                if not self.action_executor.type_perio_number(group.digits):
                     return False
                 
                 # Keep pacing delay to preserve stability in Dentrix input handling
@@ -115,6 +123,9 @@ class NumberSequencer:
     def enter_single_value(self, value: str) -> bool:
         """
         Enter a single value.
+
+        Uses type_perio_number so that double-digit depths (10–19) are sent
+        via the Dentrix numpad minus protocol automatically.
         
         Args:
             value: The digit string to enter
@@ -127,7 +138,7 @@ class NumberSequencer:
             return False
         
         try:
-            if not self.action_executor.type_text(value):
+            if not self.action_executor.type_perio_number(value):
                 return False
             time.sleep(self.inter_entry_delay_ms / 1000.0)
             
@@ -188,6 +199,10 @@ class NumberSequencer:
         
         try:
             for i in range(count):
+                # Intentionally uses self.advance_key (Enter by default), NOT Page Down.
+                # Enter follows Dentrix's navigation script path, which is the correct
+                # behaviour for skipping fields without entering data.  go_next() uses
+                # Page Down instead, which maps to the explicit Next button.
                 self.action_executor.send_keystroke(self.advance_key)
                 time.sleep(self.inter_entry_delay_ms / 1000.0)
             
@@ -199,10 +214,16 @@ class NumberSequencer:
             return False
     
     def go_next(self) -> bool:
-        """Advance to next field."""
+        """Advance to next field (Page Down in Dentrix).
+        
+        Uses Page Down, which is the Dentrix keyboard shortcut for the explicit
+        Next button — symmetric with go_previous() which uses Page Up.
+        This is intentionally different from skip_fields(), which uses
+        self.advance_key (Enter) to follow Dentrix's navigation script path.
+        """
         if not self.action_executor:
             return False
-        return self.action_executor.send_keystroke(self.advance_key)
+        return self.action_executor.send_keystroke("pagedown")
     
     def go_previous(self) -> bool:
         """Go to previous field (Page Up in Dentrix)."""

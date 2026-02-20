@@ -156,7 +156,6 @@ class GUIManager(QObject):
         # Modern medical UI signals
         if self.modern_ui:
             self.modern_ui.pause_requested.connect(self.toggle_listening)
-            self.modern_ui.save_requested.connect(self._on_save_requested)
             self.modern_ui.settings_requested.connect(self.show_settings)
             self.modern_ui.exit_requested.connect(self.signals.exit_requested.emit)
         
@@ -558,12 +557,6 @@ class GUIManager(QObject):
         self.session_time_seconds += 1
         if self.use_modern_ui and self.modern_ui:
             self.modern_ui.set_session_time(self.session_time_seconds)
-    
-    def _on_save_requested(self) -> None:
-        """Handle save request from modern UI"""
-        logger.debug("Save requested from UI")
-        # Emit signal for main app to handle save
-        self.signals.command_feedback.emit("Save command")
     
     def start_session_timer(self) -> None:
         """Start tracking session elapsed time"""

@@ -3,7 +3,9 @@ Audio feedback for successful Dentrix data entry.
 
 Modes:
 - off: disabled
-- chime: lightweight success chime
+- click: very short single beep (40ms, 1200 Hz) — crisp, minimal
+- beep: short double-beep confirmation (80ms + 60ms = 140ms total)
+- chime: short melodic three-note chime C5-E5-G5 (~260ms total)
 - readback: short spoken confirmation (async)
 """
 
@@ -20,9 +22,9 @@ logger = logging.getLogger(__name__)
 
 
 class AudioFeedbackManager:
-    """Handles optional chime/readback feedback without blocking charting."""
+    """Handles optional click/beep/chime/readback feedback without blocking charting."""
 
-    VALID_MODES = {"off", "chime", "readback"}
+    VALID_MODES = {"off", "chime", "beep", "click", "readback"}
 
     def __init__(
         self,
@@ -62,10 +64,19 @@ class AudioFeedbackManager:
         if mode == "off":
             return
 
+        if mode == "click":
+            self._play_click()
+            return
+
+        if mode == "beep":
+            self._play_beep()
+            return
+
         if mode == "chime":
             self._play_chime()
             return
 
+        # readback path
         readback_text = self._prepare_readback_text(text)
         if not readback_text:
             self._play_chime()
@@ -103,18 +114,43 @@ class AudioFeedbackManager:
 
         return clean
 
-    def _play_chime(self) -> None:
-        try:
-            if sys.platform.startswith("win"):
-                import winsound
+    def _play_tones(self, tones: list[tuple[int, int]]) -> None:
+        """Play a sequence of (frequency_hz, duration_ms) tones in a background thread.
 
-                winsound.MessageBeep(winsound.MB_ICONASTERISK)
-            else:
-                # Best-effort fallback for non-Windows dev environments.
+        On Windows, uses ``winsound.Beep`` which generates a pure tone directly
+        through the audio output — no WAV files, no system-sound dependencies.
+        On non-Windows platforms, writes the terminal bell character as a
+        best-effort fallback.
+        """
+        if sys.platform.startswith("win"):
+            def _worker() -> None:
+                try:
+                    import winsound
+                    for freq, dur in tones:
+                        winsound.Beep(freq, dur)
+                except Exception as exc:
+                    logger.debug(f"Could not play tone: {exc}")
+
+            threading.Thread(target=_worker, daemon=True).start()
+        else:
+            # Best-effort fallback for non-Windows dev environments.
+            try:
                 sys.stdout.write("\a")
                 sys.stdout.flush()
-        except Exception as exc:
-            logger.debug(f"Could not play chime: {exc}")
+            except Exception:
+                pass
+
+    def _play_click(self) -> None:
+        """Very short click sound (1200 Hz, 40 ms)."""
+        self._play_tones([(1200, 40)])
+
+    def _play_beep(self) -> None:
+        """Short double-beep confirmation (880 Hz/80 ms + 1100 Hz/60 ms = 140 ms total)."""
+        self._play_tones([(880, 80), (1100, 60)])
+
+    def _play_chime(self) -> None:
+        """Short melodic three-note chime: C5-E5-G5 (~260 ms total)."""
+        self._play_tones([(523, 80), (659, 80), (784, 100)])
 
     def _enqueue_readback(self, text: str) -> bool:
         if not self._ensure_speech_worker():

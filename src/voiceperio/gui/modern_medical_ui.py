@@ -402,12 +402,11 @@ class CompactCommandHistory(QFrame):
 
 class CompactActionBar(QWidget):
     """
-    Compact modern action buttons: Pause, Save, Settings, Exit.
+    Compact modern action buttons: Pause, Settings, Exit.
     Modern flat design with gradient-like effects on hover.
     """
     
     pause_requested = pyqtSignal()
-    save_requested = pyqtSignal()
     settings_requested = pyqtSignal()
     exit_requested = pyqtSignal()
     
@@ -453,15 +452,6 @@ class CompactActionBar(QWidget):
         self.pause_button.setMinimumWidth(50)
         self.pause_button.setStyleSheet(button_style)
         layout.addWidget(self.pause_button)
-        
-        # Save button
-        self.save_button = QPushButton("Save")
-        self.save_button.setToolTip("Save data")
-        self.save_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.save_button.clicked.connect(self.save_requested.emit)
-        self.save_button.setMinimumWidth(50)
-        self.save_button.setStyleSheet(button_style)
-        layout.addWidget(self.save_button)
         
         # Settings button
         self.settings_button = QPushButton("⚙")
@@ -517,13 +507,11 @@ class ModernMedicalUI(QMainWindow):
     
     Signals:
     - pause_requested()
-    - save_requested()
     - settings_requested()
     - exit_requested()
     """
     
     pause_requested = pyqtSignal()
-    save_requested = pyqtSignal()
     settings_requested = pyqtSignal()
     exit_requested = pyqtSignal()
     
@@ -614,7 +602,6 @@ class ModernMedicalUI(QMainWindow):
         # === ACTION BUTTONS ===
         self.action_bar = CompactActionBar()
         self.action_bar.pause_requested.connect(self.pause_requested.emit)
-        self.action_bar.save_requested.connect(self.save_requested.emit)
         self.action_bar.settings_requested.connect(self.settings_requested.emit)
         self.action_bar.exit_requested.connect(self.exit_requested.emit)
         main_layout.addWidget(self.action_bar)

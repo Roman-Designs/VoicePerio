@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 
 
 # Number word to digit mapping
+# Single-digit words map to "0"–"9"; double-digit words (10–19) map to "10"–"19".
 WORD_TO_DIGIT: Dict[str, str] = {
+    # Single digits
     "zero": "0",
     "oh": "0",
     "one": "1",
@@ -37,7 +39,24 @@ WORD_TO_DIGIT: Dict[str, str] = {
     "seven": "7",
     "eight": "8",
     "nine": "9",
+    # Double digits (10–19) — require Dentrix numpad minus protocol
+    "ten": "10",
+    "eleven": "11",
+    "twelve": "12",
+    "thirteen": "13",
+    "fourteen": "14",
+    "fifteen": "15",
+    "sixteen": "16",
+    "seventeen": "17",
+    "eighteen": "18",
+    "nineteen": "19",
 }
+
+# Set of digit strings that represent double-digit perio values (10–19).
+# Used by NumberGroup.requires_minus_protocol and group_numbers() boundary logic.
+_DOUBLE_DIGIT_VALUES: frozenset = frozenset(
+    {"10", "11", "12", "13", "14", "15", "16", "17", "18", "19"}
+)
 
 
 @dataclass
@@ -68,6 +87,17 @@ class NumberGroup:
             return int(self.digits)
         except ValueError:
             return None
+    
+    @property
+    def requires_minus_protocol(self) -> bool:
+        """
+        Return True when this group must be entered via the Dentrix numpad
+        minus-key protocol (i.e. the value is a double-digit depth 10–19).
+
+        Per Dentrix docs: press numpad '-' then the units digit to enter
+        depths of 10 mm or greater.
+        """
+        return self.digits in _DOUBLE_DIGIT_VALUES
     
     def __repr__(self) -> str:
         return f"NumberGroup('{self.digits}', {self.start_time:.2f}-{self.end_time:.2f}s)"
@@ -136,10 +166,12 @@ class NumberGrouper:
         self.navigation_words = {"next", "previous", "back", "prev"}
         self.skip_words = {"skip", "missing"}
         self.action_words = {"save", "home", "bleeding", "suppuration", "pus", 
-                           "plaque", "calculus", "furcation", "mobility", "recession"}
+                           "plaque", "calculus", "furcation", "mobility", "recession",
+                           "clear"}
         
         # Phonetic confusion mappings for speech recognition errors
         self.phonetic_confusions = {
+            # Single-digit homophones / common mishearings
             'for': ['four'],
             'four': ['for'],
             'to': ['two', 'too'],
@@ -156,6 +188,24 @@ class NumberGrouper:
             'fife': ['five'],
             'five': ['fife', 'fiv'],
             'fiv': ['five', 'fife'],
+            # Double-digit mishearings (10–19)
+            'ten': ['ten'],
+            'elven': ['eleven'],
+            'eleven': ['eleven', 'elven'],
+            'twelv': ['twelve'],
+            'twelve': ['twelve', 'twelv'],
+            'thirten': ['thirteen'],
+            'thirteen': ['thirteen', 'thirten'],
+            'forteen': ['fourteen'],
+            'fourteen': ['fourteen', 'forteen'],
+            'fiveteen': ['fifteen'],
+            'fifteen': ['fifteen', 'fiveteen'],
+            'sixten': ['sixteen'],
+            'sixteen': ['sixteen', 'sixten'],
+            'eightteen': ['eighteen'],
+            'eighteen': ['eighteen', 'eightteen'],
+            'ninteen': ['nineteen'],
+            'nineteen': ['nineteen', 'ninteen'],
         }
         
         logger.info(f"NumberGrouper initialized: threshold={pause_threshold_ms}ms")
@@ -301,24 +351,39 @@ class NumberGrouper:
             return []
         
         groups: List[NumberGroup] = []
-        current_group_words: List[TimedWord] = [number_words[0]]
+        current_group_words: List[TimedWord] = []
         
-        for i in range(1, len(number_words)):
-            prev_word = number_words[i - 1]
-            curr_word = number_words[i]
+        for i, curr_word in enumerate(number_words):
+            curr_digit = WORD_TO_DIGIT.get(curr_word.word.lower(), "")
+            is_double_digit = curr_digit in _DOUBLE_DIGIT_VALUES
             
-            # Calculate gap between end of previous word and start of current
-            gap = curr_word.start - prev_word.end
-            
-            logger.debug(f"Gap between '{prev_word.word}' and '{curr_word.word}': {gap*1000:.0f}ms")
-            
-            if gap >= self.pause_threshold:
-                # Large gap - start new group
-                groups.append(self._create_group(current_group_words))
-                current_group_words = [curr_word]
+            if is_double_digit:
+                # Double-digit words (ten–nineteen) are ALWAYS their own group.
+                # Flush whatever was accumulating before this word.
+                if current_group_words:
+                    groups.append(self._create_group(current_group_words))
+                    current_group_words = []
+                # Emit the double-digit word as its own standalone group.
+                groups.append(self._create_group([curr_word]))
+                logger.debug(f"Double-digit boundary: '{curr_word.word}' -> '{curr_digit}' (own group)")
             else:
-                # Small gap - add to current group
-                current_group_words.append(curr_word)
+                if not current_group_words:
+                    # Starting a fresh group
+                    current_group_words.append(curr_word)
+                else:
+                    prev_word = number_words[i - 1]
+                    # Calculate gap between end of previous word and start of current
+                    gap = curr_word.start - prev_word.end
+                    
+                    logger.debug(f"Gap between '{prev_word.word}' and '{curr_word.word}': {gap*1000:.0f}ms")
+                    
+                    if gap >= self.pause_threshold:
+                        # Large gap - start new group
+                        groups.append(self._create_group(current_group_words))
+                        current_group_words = [curr_word]
+                    else:
+                        # Small gap - add to current group
+                        current_group_words.append(curr_word)
         
         # Don't forget the last group
         if current_group_words:
@@ -454,5 +519,7 @@ class NumberGrouper:
             return ParsedCommand(command_type="indicator", params={"indicator": "mobility"}, raw_text=text)
         elif "recession" in text:
             return ParsedCommand(command_type="indicator", params={"indicator": "recession"}, raw_text=text)
+        elif "clear" in text:
+            return ParsedCommand(command_type="clear", raw_text=text)
         
         return ParsedCommand(command_type="action", raw_text=text)
